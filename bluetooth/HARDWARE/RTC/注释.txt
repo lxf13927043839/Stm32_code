@@ -1,0 +1,17 @@
+如果一开始的初始化，要在rtc.c中My_RTC_init中的
+
+//3.设置时间
+		//RTC_TimeStruct.RTC_H12 =  
+		RTC_TimeStruct.RTC_Hours = 9;
+		RTC_TimeStruct.RTC_Minutes = 20;
+		RTC_TimeStruct.RTC_Seconds = 30;
+		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
+		
+		//设置日期
+		RTC_DateStruct.RTC_Date = 0x31;
+		RTC_DateStruct.RTC_Month = 0x05;
+		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Tuesday;
+		RTC_DateStruct.RTC_Year = 0x19;
+		
+		RTC_SetDate(RTC_Format_BCD, &RTC_DateStruct);
+进行设置，同一个板子的 5050要修改 才能更新成功
