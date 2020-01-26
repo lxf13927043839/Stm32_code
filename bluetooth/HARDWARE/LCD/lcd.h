@@ -86,9 +86,65 @@ void LCD_DisplayNum_color(u16 x,u16 y,u32 num,u8 len,u8 size,u8 mode,u16 brushco
 
 //add function
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
-							  		 
+void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p);
+
 #endif  
-	 
+
+//int chinese[50]={1,2,3,4,5,-1};
+
+//int main()
+//{
+//	int key_id=-1;
+//	
+//	LED_init();
+//	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
+//	
+//	UART1_init(115200);
+//	KEY_init();
+//	
+// 	LCD_init();           //初始化LCD FSMC接口和显示驱动
+//	BRUSH_COLOR=RED;      //设置画笔颜色为红色
+//	
+//	LCD_DisplayString(10,10,24,"Illuminati STM32F4");	
+//	LCD_DisplayString(20,40,16,"Author:Clever");
+//	LCD_DisplayString(30,80,24,"4.TFTLCD TEST");
+//	LCD_DisplayString(50,110,16,"KEY0:Screen Test");	
+//	LCD_DisplayString(50,130,16,"KEY1:Number Test");	
+//	 
+//	
+//	LCD_DisplayChinese_one(120 ,200 ,3, 24);
+//	
+//	
+//	LCD_DisplayChinese_string(10,224,24,chinese);
+//	
+//	
+//	printf("start \n");
+//	
+//	
+//	while(1)
+//	{
+//			key_id=key_scanf(0);
+//			switch(key_id)
+//			{
+//				case 1: 
+//					LCD_Clear(BLACK);
+//					break;
+//				case 2:
+//					LCD_Clear(BLUE);
+//					break;
+//				case 3:
+//					LCD_Clear(RED);
+//					break;
+//				case 4:
+//					LCD_Clear(MAGENTA);
+//					break;
+//				
+//			}
+//		
+//	}
+
+//}
+
 	 
 
 

@@ -846,13 +846,13 @@ void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size)
 * 返回参数：无
 * 说    明：  
 --------------------------------------------------------------------------------*/	  
-void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,u8 *p)
+void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p)
 {         
-    while((*p>=0)&&(*p<=100)&&(*p != )) //只显示0-100序号的汉字，固定显示的不用那么多
+    while((*p>=0)&&(*p<=100)&&(*p != -1)) //只显示0-100序号的汉字，固定显示的不用那么多，以负数1为停止符
     {       
         LCD_DisplayChinese_one(x,y,*p,size);
         x+=size;
-			if(x>=lcd_width) break;
+				if(x>=lcd_width) break;
         p++;
     }  
 }

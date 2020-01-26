@@ -1,6 +1,6 @@
-#ifndef __ESP8266_USART4_H
+#ifndef __ESP8266_UART4_H
 
-#define __ESP8266_USART4_H
+#define __ESP8266_UART4_H
 #include "stm32f4xx.h"
 
 /*
@@ -103,7 +103,7 @@ void ESP8266_init(void)//启动要5s
 {
 		
 		
-	  delay_ms(500);//等待ESP8266启动
+	  delay_ms(500);//等待ESP8266启动，是一定需要的############
 		
 		uart4_send(UART4_SET_STATION);
 		delay_ms(500);

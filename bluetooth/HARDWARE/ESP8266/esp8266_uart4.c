@@ -29,11 +29,13 @@ void ESP8266_UART4_init(u32 bound)
 	
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG,ENABLE);
 	
+	USART_DeInit(UART4);  //复位串口4
+	
 	//2、初始化IO ,引脚复用
 	GPIO_PinAFConfig(GPIOA,GPIO_PinSource0,GPIO_AF_UART4); // PA0 TX
   GPIO_PinAFConfig(GPIOA,GPIO_PinSource1,GPIO_AF_UART4); // PA1 RX
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1; //GPIOA90  GPIOA1
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1; //GPIOA0  GPIOA1
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;//复用
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
@@ -52,24 +54,14 @@ void ESP8266_UART4_init(u32 bound)
 	
 	//4、开启中断
 	USART_ITConfig(UART4, USART_IT_RXNE, ENABLE);//
+	USART_ClearFlag(UART4, USART_FLAG_TC);
+	
 	//Uart4 NVIC 
 	NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=2;//抢占优先级 2
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority =2; //响应优先级 2
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority =0; //响应优先级 2
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; //IRQ 使能
 	NVIC_Init(&NVIC_InitStructure); 
-	
-	//CH_PD要置高电平
-	//RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
-	
-//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1; // 
-//  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;        //普通输出模式
-//  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;       //推挽输出
-//  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;   //100MHz
-//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;   //上拉
-//	GPIO_Init(GPIOA,&GPIO_InitStructure);          // 
-//  GPIO_SetBits(GPIOC, GPIO_Pin_1); 
-	
 	
 	USART_Cmd(UART4 , ENABLE); //使能串口调用函数
 }

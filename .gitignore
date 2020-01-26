@@ -24,3 +24,6 @@ JLinkLog.txt
 *.map 
 *.Administrator
 *.uvopt
+*.hex
+*.uvprojx
+*.uvguix.ASUS
