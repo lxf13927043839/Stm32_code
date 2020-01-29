@@ -37,10 +37,25 @@ void ESP8266_UART4_init(u32 bound);
 #define SIZE_of_DATA 21
 unsigned char data_buff[SIZE_of_DATA]="#11,22,33,44,55,1,0#";
 
+
+
+
 #define SIZE_from_SEVRVER 50
-char server_to_stm[SIZE_from_SEVRVER];
+char data_fromserver[SIZE_from_SEVRVER];
 int num_from_server=0;
+int link_success=0; //初始化esp8266模块时，看指令是否成功执行
+int link_flag=0; //在连接过程中检测心跳包，在tim4中断函数中控制看门狗，
+
+typedef enum{FALSE = 0,TRUE = 1} bool;
+
+bool feeddog_flag=FALSE; //喂狗标志
+
+
+int first_ok_flag=0; //用来判断第一次的ok设置定时器的值
+int ok_flag=0;	//用来反应心跳包的
 unsigned char rece_status=0;
+
+int five_second_flag=0;
 
 //串口4 的中断服务程序 ====esp8266串口4 从手机端接收的信息
 void UART4_IRQHandler(void)
@@ -55,131 +70,191 @@ void UART4_IRQHandler(void)
 		while(USART_GetFlagStatus(USART1, USART_FLAG_TC)==RESET);
 		USART_SendData(USART1, data);
 		
-		switch(rece_status)
+		if(link_success==0)  //判断wifi是否成功连接到服务器上，连接不上----看门狗重启
 		{
-			case 0:
-				if(data=='{')
-				{
-					LED0=!LED0;
-					rece_status++;
-					
-				}
-			break;
-			case 1:
-				server_to_stm[num_from_server]=data;
-				num_from_server++;
-				if(server_to_stm[num_from_server-1]=='}')
-				{
-					server_to_stm[num_from_server-1]='\0';
-					LED1=!LED1;
-					//##################
-					
-					printf("#####-----%s=%d",server_to_stm,strlen(server_to_stm));
-					
-					//##################
-					for(i=0;i<SIZE_from_SEVRVER;i++)
-					{
-						server_to_stm[i]=0;
-					}
-					num_from_server=0;
-					rece_status=0;
-				}
-			break;
-		
+			if(data=='>')
+			{
+				LED2=0;
+				link_success=1;
+				feed_dog();
+				TIM4_init(4*10000-1,8400-1); //定时器跟看门狗时间同步
+				
+				link_flag=1;
+			}
+		}else if(link_success==1)  //对tlink下行控制指令、以及心跳包的处理
+		{
+			switch(rece_status)
+			{
+				case 0://0,1是对控制指令的处理
+							if(data=='{')
+							{
+								LED0=!LED0;
+								rece_status++;
+							}
+							else
+							{
+								//这里可进行优化
+								data_fromserver[num_from_server]=data;
+								num_from_server++;
+								if(data_fromserver[num_from_server-1]=='k')
+								{
+									data_fromserver[num_from_server]='\0';
+									if(strcmp(data_fromserver,"ok")==0)
+									{
+										num_from_server=0;
+										data_fromserver[0]=0;
+										data_fromserver[1]=0;
+										data_fromserver[2]=0;
+										
+										if(first_ok_flag==0)
+										{
+											first_ok_flag=1;
+											TIM3_init(5*10000-1,8400-1);//重新定时器5秒，跟心跳包同
+											five_second_flag=1;
+											ok_flag=1;
+										}
+										else
+										{
+											ok_flag=1;//这是第二个心跳包，第一个忽略,无法知道第一个心跳包的到来时间
+										}
+										
+									}
+								}
+							}
+							break;
+				case 1:
+							data_fromserver[num_from_server]=data;
+							num_from_server++;
+							if(data_fromserver[num_from_server-1]=='}')
+							{
+								data_fromserver[num_from_server-1]='\0';
+								LED1=!LED1;
+								//##################
+								
+								printf("the order from server-----%s=%d",data_fromserver,strlen(data_fromserver));
+								
+								//##################
+								for(i=0;i<SIZE_from_SEVRVER;i++)
+								{
+									data_fromserver[i]=0;
+								}
+								num_from_server=0;
+								rece_status=0;
+							}
+							break;
+				
+			}
 		}
-		
 	//	{"sensorsId":200327142,"switcher":1}
 		USART_ClearITPendingBit(UART4, USART_IT_RXNE); 
 	}
-		//清除UART4的接收中断
-		
+		//清除UART4的接收中断	
 } 
 
-unsigned char UART4_SET_STATION[] = {"AT+CWMODE=1\r\n"};
-unsigned char UART4_CONNECT_AP[]={"AT+CWJAP=\"LI\",\"13927043839\"\r\n"};
-unsigned char UART4_CONNECT_SERVICE[]={"AT+CIPSTART=\"TCP\",\"tcp.tlink.io\",8647\r\n"};
-unsigned char UART4_serial_mode[]={"AT+CIPMODE=1\r\n"};
-unsigned char UART4_serial_mode1[]={"AT+CIPSEND\r\n"};
-unsigned char UART4_device_num[]={"7GW46RC1I769E4GX"};
+/*
+	定时器3中断服务函数
+	//定时器时钟是84M 
+	//分频系数是8400，所以 84M/8400=10KHZ的计数频率，计数5000次为500ms
+  // 1/10 000 * 5000 = 0.5s = 500ms
+  TIM3_init(5000-1,8400-1);
 
+	------------------------看门狗----------------------------
+  //时间计算：((4*2^4))/32000=0.2ms 计数一次0.2ms 500次就是1s
+	IWDG_init(4,1000);
 
-void SENDstr_to_server(char* BUF)  
-{  
-	u16 i,j;
-	i=strlen((const char*)BUF);//数据发送的长度
-	printf("the length is %d\n",i);
-	for(j=0;j<i;j++)//循环发送
-	{
-	  while(USART_GetFlagStatus(UART4,USART_FLAG_TC)==RESET);  //等待上一次的传输结束
-		USART_SendData(UART4,(uint8_t)BUF[j]); 	 //数据通过串口4发送出去
-	}
-}
+*/
 
-void WIFI_Server_Init(void)
+int opendog_flag=-1;
+int initdog=0;
+
+void TIM3_IRQHandler(void)
 {
-	delay_ms(500);//要等待ESP8266完全启动后才开始发指令
-	delay_ms(500);
-	
-	SENDstr_to_server((char *)UART4_SET_STATION);   
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-	/*需要一定时间去连接热点，然后在去连接服务器
-	出现wifi connect---------wifi get ip之后在连接tlink
-	
-	*/
-	SENDstr_to_server((char *)UART4_CONNECT_AP); 
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);      
-	delay_ms(500);	
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-	
-	SENDstr_to_server((char *)UART4_CONNECT_SERVICE);    
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);                         
-	
-	SENDstr_to_server((char *)UART4_serial_mode);  
-	delay_ms(500);
-	delay_ms(500);
-	delay_ms(500);
-
-	SENDstr_to_server((char *)UART4_serial_mode1);
-	delay_ms(500);
-	delay_ms(500); 
-	delay_ms(500);
-                      
-	SENDstr_to_server((char *)UART4_device_num);  
-	delay_ms(500);
-	delay_ms(500);   
-	delay_ms(500);
-
+	if(TIM_GetITStatus(TIM3,TIM_IT_Update)==SET) //溢出中断
+	{
+		if(initdog==0)
+		{
+			opendog_flag=opendog_flag+1;    
+			//printf("opendog_flag = %d\n",opendog_flag);
+		}
+		if(opendog_flag==2)
+		{
+			IWDG_init(4,500*5);
+			initdog=1;
+			opendog_flag=0;
+			//printf("dog successful \n");
+		}
+		
+		if(five_second_flag==1)
+		{
+			TIM2_init(10*10000-1,8400-1);
+			TIM_Cmd(TIM3,DISABLE); //失能3
+		}
+		
+	}
+	TIM_ClearITPendingBit(TIM3,TIM_IT_Update); //清除中断标志位
 }
+
+int judge_ok_flag=-1;//用来判断心跳包ok 的发送次数是否有变化
+
+void TIM2_IRQHandler(void)
+{
+	if(TIM_GetITStatus(TIM2,TIM_IT_Update)==SET) //溢出中断
+	{	
+		if(ok_flag==1)
+		{
+		  ok_flag=0;//清除一下ok的标志
+			printf("检测成功\n");
+		}
+		else
+		{
+			//SENDstr_to_server("+++");
+			//printf("the change data1111111111 is sent\n");
+			
+			//link_flag=0;//不进行喂狗操作
+			printf("检测失败 启动看门狗\n");
+		}
+	}
+	TIM_ClearITPendingBit(TIM2,TIM_IT_Update); //清除中断标志位
+}
+
+
+
+
+void TIM4_IRQHandler(void)
+{
+	if(TIM_GetITStatus(TIM4,TIM_IT_Update)==SET) //溢出中断
+	{	
+		if(link_flag==1)	
+		feed_dog();
+	}
+	TIM_ClearITPendingBit(TIM4,TIM_IT_Update); //清除中断标志位
+}
+
+
 
 int main()
 {
+	unsigned char reset[]="AT+RST\r\n";
 	int key_status=-1;
+	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
 	
 	LED_init();
-	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
-	LCD_init();
   KEY_init();
 	
 	UART1_init(115200);
+	printf("reset ----\n");
+	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
 	
+	TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
+
 	ESP8266_UART4_init(115200);
 	WIFI_Server_Init();
 	
 	printf("start \n");
 	while(1)
 	{
+
 		//通过按键测试数据的上传
 		key_status=key_scanf(0);
 		if(key_status==1)
@@ -192,6 +267,11 @@ int main()
 			data_buff[18]=1;
 			SENDstr_to_server((char *)data_buff);
 			printf("the change data is sent\n");
+		}
+		else if(key_status==4)
+		{
+			SENDstr_to_server((char *)reset);
+			printf("the change data22222222 is sent\n");
 		}
 	}
 

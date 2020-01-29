@@ -6,7 +6,8 @@
 #include "systick.h"
 
 void TIM3_init(u16 arr,u16 psc);
-
+void TIM4_init(u16 arr,u16 psc);
+void TIM2_init(u32 arr,u16 psc);
 
 #endif
 

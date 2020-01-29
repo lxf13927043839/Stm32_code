@@ -65,3 +65,81 @@ void ESP8266_UART4_init(u32 bound)
 	
 	USART_Cmd(UART4 , ENABLE); //使能串口调用函数
 }
+
+/*
+	通过esp8266（串口4）将获取的数据，转换成字符串发送到tlink上
+*/
+
+void SENDstr_to_server(char* BUF)  
+{  
+	u16 i,j;
+	i=strlen((const char*)BUF);//数据发送的长度
+	//printf("the length is %d\n",i);   //测试用
+	for(j=0;j<i;j++)//循环发送
+	{
+	  while(USART_GetFlagStatus(UART4,USART_FLAG_TC)==RESET);  //等待上一次的传输结束
+		USART_SendData(UART4,(uint8_t)BUF[j]); 	 //数据通过串口4发送出去
+	}
+}
+
+/*
+	初始化esp8266的指令，可以继续优化
+*/
+/*
+	配置esp8266的对应的AT指令
+*/
+unsigned char UART4_SET_STATION[] = {"AT+CWMODE=1\r\n"};
+unsigned char UART4_CONNECT_AP[]={"AT+CWJAP=\"LI\",\"13927043839\"\r\n"};
+unsigned char UART4_CONNECT_SERVICE[]={"AT+CIPSTART=\"TCP\",\"tcp.tlink.io\",8647\r\n"};
+unsigned char UART4_serial_mode[]={"AT+CIPMODE=1\r\n"};
+unsigned char UART4_serial_mode1[]={"AT+CIPSEND\r\n"};
+unsigned char UART4_device_num[]={"7GW46RC1I769E4GX"};
+
+void WIFI_Server_Init(void)
+{
+	delay_ms(500);//要等待ESP8266完全启动后才开始发指令
+	delay_ms(500);
+	
+	SENDstr_to_server((char *)UART4_SET_STATION);   
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);
+	/*需要一定时间去连接热点，然后在去连接服务器
+	出现wifi connect---------wifi get ip之后在连接tlink
+	
+	*/
+	SENDstr_to_server((char *)UART4_CONNECT_AP); 
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);      
+	delay_ms(500);	
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);
+	
+	SENDstr_to_server((char *)UART4_CONNECT_SERVICE);    
+	delay_ms(500);
+	delay_ms(500);
+	delay_ms(500);                         
+	
+	SENDstr_to_server((char *)UART4_serial_mode);  
+	delay_ms(500);
+	delay_ms(500);
+
+
+	SENDstr_to_server((char *)UART4_serial_mode1);
+	delay_ms(500);
+	delay_ms(500); 
+
+                      
+	SENDstr_to_server((char *)UART4_device_num);  
+	delay_ms(500);
+	delay_ms(500);   
+
+
+}
+
+

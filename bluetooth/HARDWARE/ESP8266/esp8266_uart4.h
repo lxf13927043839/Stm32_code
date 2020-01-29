@@ -2,12 +2,16 @@
 
 #define __ESP8266_UART4_H
 #include "stm32f4xx.h"
+#include "string.h"
+#include "systick.h"
 
 /*
 	esp8266的波特率是115200
 */
 
 void ESP8266_UART4_init(u32 bound);
+void SENDstr_to_server(char* BUF);  
+void WIFI_Server_Init(void);
 
 #endif
 
