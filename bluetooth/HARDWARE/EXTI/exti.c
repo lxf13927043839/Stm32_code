@@ -26,12 +26,12 @@ void EXTI_init(void)
   
 	//引脚的映射 ,不能够写在一起会出错
 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource6);
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource9);
-	//SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource8);
-	//SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource7);
+	//SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource9);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource8);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF,EXTI_PinSource7);
 	
 	//|EXTI_Line9|EXTI_Line8|EXTI_Line7
-	EXTI_InitStruct.EXTI_Line=EXTI_Line6|EXTI_Line9;
+	EXTI_InitStruct.EXTI_Line=EXTI_Line6|EXTI_Line8|EXTI_Line7;
 	EXTI_InitStruct.EXTI_Mode=EXTI_Mode_Interrupt;
 	EXTI_InitStruct.EXTI_Trigger=EXTI_Trigger_Falling; 
 	EXTI_InitStruct.EXTI_LineCmd=ENABLE;

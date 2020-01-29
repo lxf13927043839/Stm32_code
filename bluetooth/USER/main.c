@@ -23,11 +23,6 @@ void delay_ms(u16 nms);
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
 void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p);
 //---------------------ESP8266--115200--------------------------------------
-void ESP8266_UART4_init(u32 bound); 
-
-
-
-//-------------------------------------------------------------------------
 
 /*
 		data_buff={#11,22,33,44,55,1,0#};
@@ -35,9 +30,7 @@ void ESP8266_UART4_init(u32 bound);
 */
 
 #define SIZE_of_DATA 21
-unsigned char data_buff[SIZE_of_DATA]="#11,22,33,44,55,1,0#";
-
-
+unsigned char data_buff[SIZE_of_DATA]={"#11,22,33,44,55,1,0#"};
 
 
 #define SIZE_from_SEVRVER 50
@@ -46,16 +39,10 @@ int num_from_server=0;
 int link_success=0; //初始化esp8266模块时，看指令是否成功执行
 int link_flag=0; //在连接过程中检测心跳包，在tim4中断函数中控制看门狗，
 
-typedef enum{FALSE = 0,TRUE = 1} bool;
-
-bool feeddog_flag=FALSE; //喂狗标志
-
-
 int first_ok_flag=0; //用来判断第一次的ok设置定时器的值
 int ok_flag=0;	//用来反应心跳包的
-unsigned char rece_status=0;
+unsigned char rece_status=0;//接收服务器控制指令
 
-int five_second_flag=0;
 
 //串口4 的中断服务程序 ====esp8266串口4 从手机端接收的信息
 void UART4_IRQHandler(void)
@@ -109,12 +96,11 @@ void UART4_IRQHandler(void)
 										if(first_ok_flag==0)
 										{
 											first_ok_flag=1;
-											TIM2_init(12*10000-1,8400-1);//重新定时器5秒，跟心跳包同
-											five_second_flag=1;
+											TIM2_init(12*10000-1,8400-1);//重新定时器TIM2-----12秒，跟心跳包同
 										}
 										else
 										{
-											printf("重新设置计时\n");							
+											//printf("重新设置计时\n");							
 											TIM2->CNT=0;
 										}
 										
@@ -151,6 +137,7 @@ void UART4_IRQHandler(void)
 		//清除UART4的接收中断	
 } 
 
+
 /*
 	定时器3中断服务函数
 	//定时器时钟是84M 
@@ -183,27 +170,29 @@ void TIM3_IRQHandler(void)
 			opendog_flag=0;
 			//printf("dog successful \n");
 		}
-		
 	}
 	TIM_ClearITPendingBit(TIM3,TIM_IT_Update); //清除中断标志位
 }
 
-
-int first_tim2_flag=0;
+int tim2flag=-1;
 void TIM2_IRQHandler(void)
 {
 	if(TIM_GetITStatus(TIM2,TIM_IT_Update)==SET) //溢出中断
 	{	
-			SENDstr_to_server("+++");	
-			link_flag=0;//不进行喂狗操作
-			printf("检测失败 启动看门狗\n");
-	
+			if(tim2flag==-1)
+			{
+				tim2flag=1;
+			}
+			else
+			{
+					SENDstr_to_server("+++");	
+					link_flag=0;//不进行喂狗操作
+					printf("检测失败 启动看门狗\n");
+			}
+
 	}
 	TIM_ClearITPendingBit(TIM2,TIM_IT_Update); //清除中断标志位
 }
-
-
-
 
 void TIM4_IRQHandler(void)
 {
@@ -217,14 +206,62 @@ void TIM4_IRQHandler(void)
 
 
 
+//按键3 的中断处理函数
+void EXTI9_5_IRQHandler(void)
+{
+	//key3
+	if(RESET != EXTI_GetITStatus(EXTI_Line6))
+	{
+		delay_ms(10);	//去抖动
+		if(key3==0)	 
+		{
+		  printf("\nkey3 test by interrupt\n");
+		}		
+		//清楚中断标志位，否则会一直进入中断函数
+		EXTI_ClearITPendingBit(EXTI_Line6);
+	}
+	
+	//key2
+	if(RESET != EXTI_GetITStatus(EXTI_Line7))
+	{
+		delay_ms(10);	//去抖动
+		if(key2==0)	 
+		{
+			data_buff[18]='1';
+			SENDstr_to_server((char *)data_buff);
+			printf("\nkey2 test by interrupt\n");
+		}		
+		//清楚中断标志位，否则会一直进入中断函数
+		EXTI_ClearITPendingBit(EXTI_Line7);
+	}
+	//key1
+	
+	if(RESET != EXTI_GetITStatus(EXTI_Line8))
+	{
+		delay_ms(10);	//去抖动
+		if(key1==0)	 
+		{	
+			data_buff[18]='0';
+			SENDstr_to_server((char *)data_buff);
+			printf("\nkey1 test by interrupt\n");
+		}		
+		//清楚中断标志位，否则会一直进入中断函数
+		EXTI_ClearITPendingBit(EXTI_Line8);
+	}
+	
+}
+
+
+
+
+
 int main()
 {
-	unsigned char reset[]="AT+RST\r\n";
-	int key_status=-1;
 	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
 	
 	LED_init();
   KEY_init();
+	EXTI_init();
 	
 	UART1_init(115200);
 	printf("reset ----\n");
@@ -232,32 +269,13 @@ int main()
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
 	
 	TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
-
 	ESP8266_UART4_init(115200);
 	WIFI_Server_Init();
 	
 	printf("start \n");
 	while(1)
 	{
-
-		//通过按键测试数据的上传
-		key_status=key_scanf(0);
-		if(key_status==1)
-		{
-			SENDstr_to_server((char *)data_buff);
-			printf("the data is sent\n");
-		}
-		else if(key_status==2)
-		{
-			data_buff[18]=1;
-			SENDstr_to_server((char *)data_buff);
-			printf("the change data is sent\n");
-		}
-		else if(key_status==4)
-		{
-			SENDstr_to_server((char *)reset);
-			printf("the change data22222222 is sent\n");
-		}
+		
 	}
 
 }

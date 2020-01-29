@@ -13,14 +13,11 @@
 	PA1 : RX
 */
 
-
-
 void ESP8266_UART4_init(u32 bound)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
-	
 	
 	//1、开启GPIO时钟以及 uare4的使能
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
@@ -83,9 +80,6 @@ void SENDstr_to_server(char* BUF)
 }
 
 /*
-	初始化esp8266的指令，可以继续优化
-*/
-/*
 	配置esp8266的对应的AT指令
 */
 unsigned char UART4_SET_STATION[] = {"AT+CWMODE=1\r\n"};
@@ -138,8 +132,6 @@ void WIFI_Server_Init(void)
 	SENDstr_to_server((char *)UART4_device_num);  
 	delay_ms(500);
 	delay_ms(500);   
-
-
 }
 
 
