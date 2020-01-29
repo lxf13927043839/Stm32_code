@@ -78,7 +78,7 @@ void UART4_IRQHandler(void)
 				link_success=1;
 				feed_dog();
 				TIM4_init(4*10000-1,8400-1); //定时器跟看门狗时间同步
-				
+				TIM_Cmd(TIM3,DISABLE); //失能3
 				link_flag=1;
 			}
 		}else if(link_success==1)  //对tlink下行控制指令、以及心跳包的处理
@@ -109,13 +109,13 @@ void UART4_IRQHandler(void)
 										if(first_ok_flag==0)
 										{
 											first_ok_flag=1;
-											TIM3_init(5*10000-1,8400-1);//重新定时器5秒，跟心跳包同
+											TIM2_init(12*10000-1,8400-1);//重新定时器5秒，跟心跳包同
 											five_second_flag=1;
-											ok_flag=1;
 										}
 										else
 										{
-											ok_flag=1;//这是第二个心跳包，第一个忽略,无法知道第一个心跳包的到来时间
+											printf("重新设置计时\n");							
+											TIM2->CNT=0;
 										}
 										
 									}
@@ -184,35 +184,20 @@ void TIM3_IRQHandler(void)
 			//printf("dog successful \n");
 		}
 		
-		if(five_second_flag==1)
-		{
-			TIM2_init(10*10000-1,8400-1);
-			TIM_Cmd(TIM3,DISABLE); //失能3
-		}
-		
 	}
 	TIM_ClearITPendingBit(TIM3,TIM_IT_Update); //清除中断标志位
 }
 
-int judge_ok_flag=-1;//用来判断心跳包ok 的发送次数是否有变化
 
+int first_tim2_flag=0;
 void TIM2_IRQHandler(void)
 {
 	if(TIM_GetITStatus(TIM2,TIM_IT_Update)==SET) //溢出中断
 	{	
-		if(ok_flag==1)
-		{
-		  ok_flag=0;//清除一下ok的标志
-			printf("检测成功\n");
-		}
-		else
-		{
-			//SENDstr_to_server("+++");
-			//printf("the change data1111111111 is sent\n");
-			
-			//link_flag=0;//不进行喂狗操作
+			SENDstr_to_server("+++");	
+			link_flag=0;//不进行喂狗操作
 			printf("检测失败 启动看门狗\n");
-		}
+	
 	}
 	TIM_ClearITPendingBit(TIM2,TIM_IT_Update); //清除中断标志位
 }
