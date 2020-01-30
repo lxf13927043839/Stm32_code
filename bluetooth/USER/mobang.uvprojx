@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\FWLIB\inc;..\USER;..\HARDWARE\DELAY;..\HARDWARE\LED;..\HARDWARE\KEY;..\HARDWARE\BEEP;..\HARDWARE\EXTI;..\HARDWARE\USART;..\SYSTEM\sys;..\SYSTEM\systick;..\HARDWARE\IWDG;..\HARDWARE\PWM;..\HARDWARE\ADC;..\HARDWARE\DHT11;..\HARDWARE\RTC;..\HARDWARE\TIM3;..\HARDWARE\IIC;..\HARDWARE\ESP8266;..\HARDWARE\LCD</IncludePath>
+              <IncludePath>..\CORE;..\FWLIB\inc;..\USER;..\HARDWARE\DELAY;..\HARDWARE\LED;..\HARDWARE\KEY;..\HARDWARE\BEEP;..\HARDWARE\EXTI;..\HARDWARE\USART;..\SYSTEM\sys;..\SYSTEM\systick;..\HARDWARE\IWDG;..\HARDWARE\PWM;..\HARDWARE\ADC;..\HARDWARE\DHT11;..\HARDWARE\RTC;..\HARDWARE\TIM3;..\HARDWARE\IIC;..\HARDWARE\ESP8266;..\HARDWARE\LCD;..\HARDWARE\PEOPLE</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -583,6 +583,11 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\LCD\lcd.c</FilePath>
             </File>
+            <File>
+              <FileName>people.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PEOPLE\people.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -677,6 +682,11 @@
               <FileName>cfont.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\LCD\cfont.h</FilePath>
+            </File>
+            <File>
+              <FileName>people.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\PEOPLE\people.h</FilePath>
             </File>
           </Files>
         </Group>
