@@ -2,13 +2,14 @@
 #include "stm32f4xx.h"
 #include "usart.h"
 #include "led.h"
+#include "lcd.h"
 
-
+RTC_TimeTypeDef RTC_TimeStruct;
+RTC_DateTypeDef RTC_DateStruct;
 u8 My_RTC_init(void)
 {
 	RTC_InitTypeDef RTC_InitStructure;
-	RTC_TimeTypeDef RTC_TimeStruct;
-	RTC_DateTypeDef RTC_DateStruct;
+
 	
 	u16 retry=0X1FFF;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);//使能PWR时钟
@@ -33,16 +34,16 @@ u8 My_RTC_init(void)
 		
 		//3.设置时间
 		//RTC_TimeStruct.RTC_H12 =  
-		RTC_TimeStruct.RTC_Hours = 8;
-		RTC_TimeStruct.RTC_Minutes = 20;
+		RTC_TimeStruct.RTC_Hours = 14;
+		RTC_TimeStruct.RTC_Minutes = 45;
 		RTC_TimeStruct.RTC_Seconds = 50;
 		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
 		
 		//设置日期
-		RTC_DateStruct.RTC_Date = 0x20;
-		RTC_DateStruct.RTC_Month = 0x06;
-		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Tuesday;
-		RTC_DateStruct.RTC_Year = 0x19;
+		RTC_DateStruct.RTC_Date = 0x08;
+		RTC_DateStruct.RTC_Month = 0x02;
+		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Saturday;
+		RTC_DateStruct.RTC_Year = 0x20;
 		
 		RTC_SetDate(RTC_Format_BCD, &RTC_DateStruct);
 		
@@ -141,6 +142,8 @@ void RTC_Alarm_IRQHandler(void)
 	EXTI_ClearITPendingBit(EXTI_Line17); //清除中断线17的标志位
 }
 
+
+
 //RTC wake up中断服务函数
 void RTC_WKUP_IRQHandler(void)
 {
@@ -151,10 +154,74 @@ void RTC_WKUP_IRQHandler(void)
 	}
 	EXTI_ClearITPendingBit(EXTI_Line22);//
 }
+//add----copy
+u8 const month_amendBuf[12]={0,3,3,6,1,4,6,2,5,0,3,5};
+/****************************************************************************
+* 名    称: u8 RTC_GetWeek(u16 wyear,u8 wmonth,u8 wday)
+* 功    能：获得某天是星期几
+* 入口参数：wyear：年(最大99)  wmonth：月  wday：日
+* 返回参数：星期几
+* 说    明：从2000~2099有效
+            返回值1-7依次对应星期一到星期天  
+            该函数用于设置时间时，无需输入星期几，取时间星期几时无需使用该函数，
+            因直接读取日期寄存器的星期值就行
+            注意形参“年”是8位，即要输入2位的年的参数  15：合法    2015：不合法
+****************************************************************************/																						 
+u8 RTC_GetWeek(u8 wyear,u8 wmonth,u8 wday)
+{	
+	u16 middata;
+	u8 yearL;
+	
+	yearL=wyear+100; 	 //从2000年开始，加100
 
+	middata=yearL+yearL/4;
+	middata=middata%7; 
+	middata=middata+wday+month_amendBuf[wmonth-1];
+	if (yearL%4==0&&wmonth<3)middata--;
+	
+	if((middata%7==0)) return 7;       //与STM32F103的rtc例程不同，该函数星期天返回值为7
+	return(middata%7);
+}	
+/****************************************************************************
+* 名    称: ErrorStatus RTC_SetTimes(u8 year,u8 month,u8 date,u8 hour,u8 min,u8 sec)
+* 功    能：设置RTC时间
+* 入口参数：年月日时分秒
+* 返回参数：成功与否  1：成功   0：失败
+* 说    明：注意形参“年”是8位，即要输入4位的年的参数  15：合法    2015：不合法    
+****************************************************************************/	
+ErrorStatus RTC_SetTimes(u8 year,u8 month,u8 date,u8 hour,u8 min,u8 sec)
+{
+  RTC_DateTypeDef RTC_DateTypeInitStructure;
+	RTC_TimeTypeDef RTC_TimeTypeInitStructure;
+	
+	RTC_DateTypeInitStructure.RTC_Date=date;
+	RTC_DateTypeInitStructure.RTC_Month=month;
+	RTC_DateTypeInitStructure.RTC_WeekDay=RTC_GetWeek(year,month,date);
+	//RTC_DateTypeInitStructure.RTC_WeekDay=week;
+	RTC_DateTypeInitStructure.RTC_Year=year;
 
-
-
-
+	
+	RTC_TimeTypeInitStructure.RTC_Hours=hour;
+	RTC_TimeTypeInitStructure.RTC_Minutes=min;
+	RTC_TimeTypeInitStructure.RTC_Seconds=sec;
+	
+	if(hour>12)
+	     RTC_TimeTypeInitStructure.RTC_H12=RTC_H12_PM;
+	else RTC_TimeTypeInitStructure.RTC_H12=RTC_H12_AM;
+	
+	return ( RTC_SetDate(RTC_Format_BIN,&RTC_DateTypeInitStructure) && RTC_SetTime(RTC_Format_BIN,&RTC_TimeTypeInitStructure) );
+}
+/****************************************************************************
+* 名    称: void RTC_GetTimes(uint32_t RTC_Format)
+* 功    能：读取RTC时间
+* 入口参数：RTC_Format：读取时间数据的数据类型  RTC_Format_BIN：字节型  RTC_Format_BCD：BCD码数据类型
+* 返回参数：无
+* 说    明：     
+****************************************************************************/
+void RTC_GetTimes(uint32_t RTC_Format)
+{
+		RTC_GetDate(RTC_Format,&RTC_DateStruct);
+	  RTC_GetTime(RTC_Format,&RTC_TimeStruct);
+}
 
 

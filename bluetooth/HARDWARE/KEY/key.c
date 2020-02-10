@@ -55,3 +55,55 @@ int key_scanf(int mode)
 	}
 	return 0;
 }
+
+/****************************************************************************
+* 名    称: void key_scan(u8 mode)
+* 功    能：按键扫描函数-----功能更强大点
+* 入口参数：mode：0：单按 
+                  1: 连按
+* 返回参数：无
+* 说    明：响应优先级,KEY0>KEY1>KEY2>KEY3
+****************************************************************************/
+u8  keydown_data=0x00;    //按键按下后就返回的值
+u8  keyup_data=0x00;      //按键抬起返回值
+u16  key_time=0x00;       //按键按下之后的时间计数，该值乘以扫描一次按键函数的时间就等于按键按下的时间
+
+u8  key_tem=0x00;         //长按的按键值与按键扫描程序过渡变量
+u8  key_bak=0x00;         //按键扫描程序过渡变量
+
+void key_scan_advanced(u8 mode)
+{	   
+	 keyup_data=0;         //键抬起后按键值一次有效
+	
+	if(key0==0||key1==0||key2==0||key3==0)   //有键正按下
+	{
+		if(key0==0)      key_tem=1;
+		else if(key1==0) key_tem=2;
+		else if(key2==0) key_tem=3;
+		else if(key3==0) key_tem=4;
+		
+		if (key_tem == key_bak)      //有键按下后第一次扫描不处理，与else配合第二次扫描有效，这样实现了去抖动
+		{
+			 key_time++;             //有键按下后执行一次扫描函数，该变量加1
+			 keydown_data=key_tem;   //按键值赋予keydown_data
+			
+			 if( (mode==0)&&(key_time>1) )//key_time>1按键值无效，这就是单按，如果mode为1就为连按
+					keydown_data=0;
+		}
+		else                             //去抖动      
+		{
+			 key_time=0;
+			 key_bak=key_tem;
+		}
+	}
+	else       //键抬起
+	{
+		 if(key_time>2)            //按键抬起后返回一次按键值
+			{
+				keyup_data=key_tem;  //键抬起后按键值赋予keydown_data            						
+			}
+			key_bak=0;               //要清零，不然下次执行扫描程序时按键的值跟上次按的值一样，就没有去抖动处理了
+			key_time=0;
+			keydown_data=0;		
+	}    
+}

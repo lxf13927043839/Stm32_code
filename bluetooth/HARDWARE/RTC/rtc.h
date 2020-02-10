@@ -5,6 +5,9 @@
 #include "sys.h"
 #include "systick.h"
 
+extern RTC_TimeTypeDef RTC_TimeStruct;
+extern RTC_DateTypeDef RTC_DateStruct;
+
 u8 My_RTC_init(void);
 void RTC_Set_AlarmA(u8 week,u8 hour,u8 min,u8 sec);
 void RTC_Alarm_IRQHandler(void);
@@ -51,7 +54,7 @@ void RTC_Set_WakeUp(u32 wksel,u16 cnt);
 //	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
 //	//所有给0 会产生1S
 //	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
-//	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP ?????
+//	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
 //	
 //	
 //	

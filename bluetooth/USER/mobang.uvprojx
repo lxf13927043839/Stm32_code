@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\FWLIB\inc;..\USER;..\HARDWARE\DELAY;..\HARDWARE\LED;..\HARDWARE\KEY;..\HARDWARE\BEEP;..\HARDWARE\EXTI;..\HARDWARE\USART;..\SYSTEM\sys;..\SYSTEM\systick;..\HARDWARE\IWDG;..\HARDWARE\PWM;..\HARDWARE\ADC;..\HARDWARE\DHT11;..\HARDWARE\RTC;..\HARDWARE\TIM3;..\HARDWARE\IIC;..\HARDWARE\ESP8266;..\HARDWARE\LCD;..\HARDWARE\PEOPLE</IncludePath>
+              <IncludePath>..\CORE;..\FWLIB\inc;..\USER;..\HARDWARE\DELAY;..\HARDWARE\LED;..\HARDWARE\KEY;..\HARDWARE\BEEP;..\HARDWARE\EXTI;..\HARDWARE\USART;..\SYSTEM\sys;..\SYSTEM\systick;..\HARDWARE\IWDG;..\HARDWARE\PWM;..\HARDWARE\ADC;..\HARDWARE\DHT11;..\HARDWARE\RTC;..\HARDWARE\TIM3;..\HARDWARE\IIC;..\HARDWARE\ESP8266;..\HARDWARE\LCD;..\HARDWARE\PEOPLE;..\HARDWARE\TOUCH;..\HARDWARE\IMAGE2LCD</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -588,6 +588,26 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\PEOPLE\people.c</FilePath>
             </File>
+            <File>
+              <FileName>xpt2046.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TOUCH\xpt2046.c</FilePath>
+            </File>
+            <File>
+              <FileName>touch.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TOUCH\touch.c</FilePath>
+            </File>
+            <File>
+              <FileName>image1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\image1.c</FilePath>
+            </File>
+            <File>
+              <FileName>image2lcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\image2lcd.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -688,6 +708,21 @@
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\PEOPLE\people.h</FilePath>
             </File>
+            <File>
+              <FileName>touch.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\TOUCH\touch.h</FilePath>
+            </File>
+            <File>
+              <FileName>xpt2046.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\TOUCH\xpt2046.h</FilePath>
+            </File>
+            <File>
+              <FileName>image2lcd.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\image2lcd.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -702,6 +737,21 @@
               <FileName>systick.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\SYSTEM\systick\systick.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>PIC</GroupName>
+          <Files>
+            <File>
+              <FileName>smart_on.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\smart_on.c</FilePath>
+            </File>
+            <File>
+              <FileName>smart_off.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\smart_off.c</FilePath>
             </File>
           </Files>
         </Group>

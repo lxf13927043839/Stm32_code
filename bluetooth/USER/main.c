@@ -18,18 +18,27 @@
 #include "string.h"
 #include "lcd.h"
 #include "people.h"
+#include "touch.h"
+#include "xpt2046.h"
+#include "image2lcd.h"
+
 
 
 void delay_ms(u16 nms);
 //---------------------显示单个汉字与汉字字符串--------------------------
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
 void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p);
+
+void LCD_DisplayChar(u16 x,u16 y,u8 word,u8 size); //显示一个字符
+void LCD_DisplayString(u16 x,u16 y,u8 size,u8 *p); //显示一个12/16/24字体字符串
+
+
 //---------------------ESP8266--115200--------------------------------------
 void front_rotate(void);
 void area_rotate(void);
 void stop_rotate(void);
 
-void get_sensor_data(void);
+void get_sensor_data(char *data_buff);
 /*
 		data_buff={#11,22,33,44,55,1,0#};
 		温度、湿度、光照、光照阈值、窗帘状态、窗帘模式、是否更新数据
@@ -39,6 +48,13 @@ void get_sensor_data(void);
 #define SIZE_of_DATA 22
 unsigned char data_buff[SIZE_of_DATA]={"#11,22,3.2,4.0,55,1,0#"};
 
+char Weekday[][15]={{"Monday"},{"Tuesday"},{"Wednesday"},{"Thursday"},{"Friday"},{"Saturday"},{"Sunday"}}; 
+            
+          
+           
+             
+           
+             
 
 #define SIZE_from_SEVRVER 50
 char data_fromserver[SIZE_from_SEVRVER];
@@ -106,7 +122,7 @@ void UART4_IRQHandler(void)
 										if(first_ok_flag==0)
 										{
 											first_ok_flag=1;
-											TIM2_init(12*10000-1,8400-1);//重新定时器TIM2-----12秒，跟心跳包同
+											TIM2_init(14*10000-1,8400-1);//重新定时器TIM2-----14秒，跟心跳包同
 										}
 										else
 										{
@@ -128,6 +144,16 @@ void UART4_IRQHandler(void)
 								//##################
 								
 								printf("the order from server-----%s=%d",data_fromserver,strlen(data_fromserver));
+								
+								if(strcmp(data_fromserver,"hello")==0)
+								{
+									printf("the order has received\n");
+									front_rotate();
+								}
+								else if(strcmp(data_fromserver,"world")==0)
+								{
+									stop_rotate();
+								}
 								
 								//##################
 								for(i=0;i<SIZE_from_SEVRVER;i++)
@@ -187,12 +213,13 @@ void TIM3_IRQHandler(void)
 		if(link_flag==1) //定时5秒上传数据
 		{
 			five_second_send_flag++;
-			if(five_second_send_flag==5)
+			if(five_second_send_flag==10)
 			{
 				five_second_send_flag=0;
-				get_sensor_data();
+				get_sensor_data((char *)data_buff);
 				SENDstr_to_server((char *)data_buff);
 			}
+			
 		}
 	}
 	TIM_ClearITPendingBit(TIM3,TIM_IT_Update); //清除中断标志位
@@ -256,7 +283,7 @@ void EXTI9_5_IRQHandler(void)
 			
 			area_rotate();
 			
-			data_buff[18]='1';
+			//data_buff[18]='1';
 			//SENDstr_to_server((char *)data_buff);
 			printf("\nkey2 test by interrupt\n");
 		}		
@@ -273,7 +300,7 @@ void EXTI9_5_IRQHandler(void)
 			
 			stop_rotate();
 			
-			data_buff[18]='0';
+			//data_buff[18]='0';
 			//SENDstr_to_server((char *)data_buff);
 			printf("\nkey1 test by interrupt\n");
 		}		
@@ -352,9 +379,11 @@ void ALL_SENSOR_init(void)
 	
 	People_init();
 	
+
+	
 }
 //获取dht11 光敏、RTC数据
-void get_sensor_data(void)
+void get_sensor_data(char *data_buff)
 {
 	u8 temperature;//温度
   u8 humidity;   //湿度
@@ -399,13 +428,108 @@ void get_sensor_data(void)
 	printf("所采集的数据data = %s \n",data_buff);
 }
 
+ /*------------------------------------------------------------------- 
+	1、汉字大小：24*24共 72字节
+  2、显示汉字时调用对应序号：
+	温(0) 湿(1) 度(2) 光(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
+       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23）
+ */
+int chinese[]={0,2,-1};//温度
+int chinese1[]={1,2,-1};//湿度
+int chinese2[]={3,4,5,6,-1};//光照强度
+int chinese3[]={3,4,17,18,-1};//光照阈值
 
+void LCD_show_RTC(void);
+void LCD_showdate(void)
+{
+	int x=0,y=0;
+	u8 temp[2];
+	RTC_DateTypeDef RTC_DateStruct;
+	u8 temp_buff[40]; 
+	
+	
+	BRUSH_COLOR=RED;      //设置画笔颜色为黑色
+	//温度
+	x=95,y=47;
+	temp[0]=data_buff[1];
+	temp[1]=data_buff[2];
+	LCD_DisplayString(x,y,24,temp); //显示一个24字体字符串，宽只占了12,字符显示时候
+	LCD_DisplayChinese_one(x+12*2,y,19,24);
+	
+	//湿度
+	x=95;y=80;
+	temp[0]=data_buff[4];
+	temp[1]=data_buff[5];
+	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
+	LCD_DisplayChinese_one(x+12*2,y,20,24);
+	
+	//光照强度----采用弱、中、强来表示，数字意义不大
+	x=95;y=113;
+	temp[0]=data_buff[7];
+	temp[1]=data_buff[9];
+	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
+	
+	//显示日期
+	x=5;y=295;
+	RTC_GetDate(RTC_Format_BIN, &RTC_DateStruct);
+	sprintf((char*)temp_buff,"20%02d-%02d-%02d",RTC_DateStruct.RTC_Year,RTC_DateStruct.RTC_Month,RTC_DateStruct.RTC_Date);
+	//printf("%s\n",temp_buff);
+	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+	
+	//显示时间测试位置,显示ok---该函数放在秒的唤醒服务函数
+	//LCD_show_RTC();
+	
+	/*	
+	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
+	//所有给0 会产生1S
+	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
+	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
+
+
+	
+	
+	//显示星期
+	y=24*4;
+	sprintf((char*)temp_buff,"Week:%s",Weekday[RTC_DateStruct.RTC_WeekDay-1]);
+	//printf("%s\n",temp_buff);
+	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+
+	//显示光照阈值
+	y=24*6;
+	LCD_DisplayChinese_string(x,y,24,chinese3);
+	LCD_DisplayChar(x+24*4,y,':',24);//宽度只有8
+	LCD_DisplayChinese_one(x+24*5,y,23,24);
+	*/
+}
+void LCD_show_RTC(void)
+{
+	int x=0,y=0;
+	RTC_TimeTypeDef RTC_TimeStruct;
+	u8 temp_buff[40]; 
+
+	//显示时间
+	x=142;y=295;
+	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
+	sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
+	//printf("%s\n",temp_buff);
+	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+}
+
+//跳转到设置光照阈值的界面
+
+extern const u8 gImage_smart_on[];//图片提取出来的颜色值
+extern const u8 gImage_smart_off[];
+char smart_change_flag=1;
 
 int main()
 {
-	
+	int only_test=0;
 	int people=0;
 	int i=0,cycle=0,T=2048;
+	//test
+	HEADCOLOR *imginfo;
+	imginfo=(HEADCOLOR*)gImage_smart_on;
+	
 	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
 	
 	BEEP_init();
@@ -418,19 +542,55 @@ int main()
 	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
 	
-	TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
-	ESP8266_UART4_init(115200);
-	WIFI_Server_Init();
+	//TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
+	//ESP8266_UART4_init(115200);
+	//WIFI_Server_Init();
 	
-	ALL_SENSOR_init();
+	//ALL_SENSOR_init();
+	LCD_init();  //初始化LCD FSMC接口和显示驱动
+
+	
+	Touch_Init();				//触摸屏的初始化
 	
 	printf("start \n");
 	
+	My_RTC_init();
+	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
+	//所有给0 会产生1S
+	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
+	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
+	
+	//R_Touch_test(); //函数中间有一个循环检测触摸屏
+	image_display(0,0,(u8*)gImage_smart_on);
+	LCD_showdate();
+	
 	while(1)
 	{
-		//delay_ms(500);
-		//delay_ms(500);
-		//get_sensor_data();
+		XPT2046_Scan(0);//长按有反应，待解决 		 
+		/*
+		if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+		{
+			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
+			if(smart_change_flag==1)
+			{
+				imginfo=(HEADCOLOR*)gImage_smart_off;
+				image_display(0,0,(u8*)gImage_smart_off);
+				smart_change_flag=0;
+			}
+			else if(smart_change_flag==0)
+			{
+				imginfo=(HEADCOLOR*)gImage_smart_on;
+				image_display(0,0,(u8*)gImage_smart_on);
+				smart_change_flag=1;
+			}
+			delay_ms(200);
+		}
+		*/
+		if(Xdown>0&&Xdown<240&&Ydown>0&&Ydown<320)
+		{
+			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
+			delay_ms(200);
+		}
 	}
 
 }
