@@ -753,6 +753,16 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\IMAGE2LCD\smart_off.c</FilePath>
             </File>
+            <File>
+              <FileName>set_light.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\set_light.c</FilePath>
+            </File>
+            <File>
+              <FileName>set_time.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\set_time.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
