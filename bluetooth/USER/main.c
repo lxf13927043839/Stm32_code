@@ -41,7 +41,7 @@ void stop_rotate(void);
 void get_sensor_data(char *data_buff);
 /*
 		data_buff={#11,22,33,44,55,1,0#};
-		温度、湿度、光照、光照阈值、窗帘状态、窗帘模式、是否更新数据
+		温度、湿度、光照(tlink能怎么设计)、光照阈值(待确定)、窗帘状态、系统模式、人体红外、是否更新数据
 		12    45   7 9    11  13 
 */
 
@@ -522,8 +522,14 @@ extern const u8 gImage_smart_on[];//智能模式，蜂鸣器开
 extern const u8 gImage_smart_off[];//智能模式，蜂鸣器关
 char smart_change_flag=1;
 
+extern const u8 gImage_on_on[]; //蜂鸣器开，窗帘开
+extern const u8 gImage_on_off[];//蜂鸣器开，窗帘关
+extern const u8 gImage_off_on[];//蜂鸣器关，窗帘开
+extern const u8	gImage_off_off[];//蜂鸣器关，窗帘关
+
 extern const u8 gImage_set_light[];//设置光照阈值界面
 extern const u8 gImage_set_time[]; //设置定时
+
 
 /*
    功能：对光照阈值进行设置，并写入到at24c02中
@@ -531,13 +537,27 @@ extern const u8 gImage_set_time[]; //设置定时
 void SET_lightcondition(void)
 {
 	//1、显示图片
-	char choose=0;
-	char buff;
+	u8 choose=0;
+	u8 buff;
 	imginfo=(HEADCOLOR*)gImage_set_light;
 	image_display(0,0,(u8*)gImage_set_light);
 	Xdown=-1;
 	Ydown=-1;
 	
+	AT24CXX_Read(1,(u8 *)&buff,1);
+	if(buff==1)
+	{
+		LCD_DisplayChinese_one(105,45,21,24);
+	}
+	else if(buff==2)
+	{
+		LCD_DisplayChinese_one(105,45,22,24);
+	}
+	else if(buff==3)
+	{
+		
+		LCD_DisplayChinese_one(105,45,23,24);
+	}
 	
 	while(1)
 	{
@@ -563,17 +583,17 @@ void SET_lightcondition(void)
 			LCD_DisplayChinese_one(105,45,23,24);
 			choose=3;
 		}
-		//确认
+		//确认-----------之后返回至主界面
 		if(Xdown>97&&Xdown<147&&Ydown>134&&Ydown<187)
 		{
-			delay_ms(300);
+			delay_ms(200);
 			
-			AT24CXX_WriteOneByte(0,choose);
+			AT24CXX_WriteOneByte(1,choose);
 			printf("light successful\n");
 			
-			delay_ms(500);
-			AT24CXX_Read(0,(u8 *)&buff,1);
-			printf("choose = %d\n",choose);
+			//delay_ms(100);
+			//AT24CXX_Read(1,(u8 *)&buff,1);
+			//printf("choose = %d\n",choose);
 			
 			//add 
 			imginfo=(HEADCOLOR*)gImage_smart_on;
@@ -582,7 +602,7 @@ void SET_lightcondition(void)
 			
 		}
 		
-		//返回按钮
+		//返回按钮--------返回至主界面
 		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
 		{
 			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
@@ -744,7 +764,7 @@ void SET_time(void)
 	LCD_DisplayString(30,160,16,"KEY2: Right Move");
 	*/
 	RTC_GetTimes(RTC_Format_BIN);//获得系统的时间
-	Time_Display();
+	Time_Display(); //在底下进行的动态显示
 	
 
 	//显示界面
@@ -755,7 +775,7 @@ void SET_time(void)
 	AT24CXX_Read(4,&had_settimeflag,1);
 	if(had_settimeflag==1||had_settimeflag==0)
 	{
-		printf("正在画图\n");
+		//printf("正在画图\n");
 		
 		AT24CXX_Read(5,(u8 *)date_buff,10);
 		delay_ms(50);
@@ -998,6 +1018,7 @@ int main()
 	image_display(0,0,(u8*)gImage_smart_on);
 	LCD_showdate();
 	
+	
 	while(1)
 	{
 		XPT2046_Scan(0);//长按有反应，待解决 		 
@@ -1034,6 +1055,14 @@ int main()
 		{
 			delay_ms(300);
 			SET_time();
+		}
+		
+		//夜晚蜂鸣器
+		if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+		{
+			delay_ms(200);
+			
+			
 		}
 		
 	}
