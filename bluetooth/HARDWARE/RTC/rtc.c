@@ -14,7 +14,7 @@ u8 My_RTC_init(void)
 	u16 retry=0X1FFF;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);//Ê¹ÄÜPWRÊ±ÖÓ
 	PWR_BackupAccessCmd(ENABLE); //Ê¹ÄÜºó±¸¼Ä´æÆ÷·ÃÎÊ
-	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5030)//ÊÇ·ñµÚÒ»´ÎÅäÖÃ¡£¿
+	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5020)//ÊÇ·ñµÚÒ»´ÎÅäÖÃ¡£¿
 	{
 		RCC_LSEConfig(RCC_LSE_ON);//LSE ¿ªÆô
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) 
@@ -34,25 +34,25 @@ u8 My_RTC_init(void)
 		
 		//3.ÉèÖÃÊ±¼ä
 		//RTC_TimeStruct.RTC_H12 =  
-		RTC_TimeStruct.RTC_Hours = 14;
-		RTC_TimeStruct.RTC_Minutes = 45;
+		RTC_TimeStruct.RTC_Hours = 23;
+		RTC_TimeStruct.RTC_Minutes = 58;
 		RTC_TimeStruct.RTC_Seconds = 50;
 		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
 		
 		//ÉèÖÃÈÕÆÚ
-		RTC_DateStruct.RTC_Date = 0x08;
+		RTC_DateStruct.RTC_Date = 0x16;
 		RTC_DateStruct.RTC_Month = 0x02;
 		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Saturday;
 		RTC_DateStruct.RTC_Year = 0x20;
 		
 		RTC_SetDate(RTC_Format_BCD, &RTC_DateStruct);
 		
-		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5030);//±ê¼ÇÒÑ¾­³õÊ¼»¯¹ýÁË
+		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5020);//±ê¼ÇÒÑ¾­³õÊ¼»¯¹ýÁË
 	}
 	return 0;
 }
 
-//ÉèÖÃÄÖÖÓÊ±¼ä£¨°´ÐÇÆÚÄÖÁå£¬24Ð¡Ê±ÉèÖÃ£©
+//ÉèÖÃÄÖÖÓÊ±¼ä£¨°´ÈÕÆÚÄÖÁå£¬24Ð¡Ê±ÉèÖÃ£©
 
 void RTC_Set_AlarmA(u8 week,u8 hour,u8 min,u8 sec)
 {
@@ -143,6 +143,37 @@ void RTC_Alarm_IRQHandler(void)
 }
 
 
+/*
+	Ò»ÃëÖ´ÐÐÒ»´Î£¬ÓÃÀ´ÔÚ00£º00-06£º00Ò¹Íí·äÃùÆ÷¾¯±¨
+*/
+u8 Zero_to_six_clock=0;//1´ú±í0-6Ê±¿ÌÀ´ÁÙ£¬0£ºÎ´À´µ½
+extern u8 enter_set_time;
+
+void LCD_showtime_RTC(void)
+{
+	int x=0,y=0;
+	RTC_TimeTypeDef RTC_TimeStruct;
+	u8 temp_buff[40]; 
+
+	//ÏÔÊ¾Ê±¼ä
+	x=142;y=295;
+	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
+	sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
+	//printf("%s\n",temp_buff);
+	if(RTC_TimeStruct.RTC_Hours>=0&&RTC_TimeStruct.RTC_Hours<=5)//00£º00
+	{
+		Zero_to_six_clock=1;
+		printf("zero to six is arrival\n");
+	}
+  else
+	{
+		Zero_to_six_clock=0;
+		printf("six is arrival\n");
+	}
+	if(enter_set_time==0)
+	LCD_DisplayString(x,y,24,temp_buff); //ÏÔÊ¾Ò»¸ö12/16/24×ÖÌå×Ö·û´®
+}
+
 
 //RTC wake upÖÐ¶Ï·þÎñº¯Êý
 void RTC_WKUP_IRQHandler(void)
@@ -150,6 +181,7 @@ void RTC_WKUP_IRQHandler(void)
 	if(RTC_GetFlagStatus(RTC_FLAG_WUTF)==SET)//WK_UP ÖÐ¶Ï
 	{
 		RTC_ClearFlag(RTC_FLAG_WUTF); //
+		LCD_showtime_RTC();
 		LED0=!LED0;
 	}
 	EXTI_ClearITPendingBit(EXTI_Line22);//

@@ -744,44 +744,19 @@
           <GroupName>PIC</GroupName>
           <Files>
             <File>
-              <FileName>smart_on.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\smart_on.c</FilePath>
-            </File>
-            <File>
-              <FileName>smart_off.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\smart_off.c</FilePath>
-            </File>
-            <File>
-              <FileName>set_light.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\set_light.c</FilePath>
-            </File>
-            <File>
               <FileName>set_time.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\IMAGE2LCD\set_time.c</FilePath>
             </File>
             <File>
-              <FileName>off_off.c</FileName>
+              <FileName>hand_mode.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\off_off.c</FilePath>
+              <FilePath>..\HARDWARE\IMAGE2LCD\hand_mode.c</FilePath>
             </File>
             <File>
-              <FileName>off_on.c</FileName>
+              <FileName>smart_mode.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\off_on.c</FilePath>
-            </File>
-            <File>
-              <FileName>on_off.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\on_off.c</FilePath>
-            </File>
-            <File>
-              <FileName>on_on.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\on_on.c</FilePath>
+              <FilePath>..\HARDWARE\IMAGE2LCD\smart_mode.c</FilePath>
             </File>
           </Files>
         </Group>

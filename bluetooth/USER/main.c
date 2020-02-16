@@ -435,7 +435,9 @@ void get_sensor_data(char *data_buff)
        式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
  */
 
-void LCD_show_RTC(void);
+void LCD_showtime_RTC(void);
+
+extern u8 Zero_to_six_clock;
 void LCD_showdate(void)
 {
 	int x=0,y=0;
@@ -497,116 +499,16 @@ void LCD_showdate(void)
 	LCD_DisplayChinese_one(x+24*5,y,23,24);
 	*/
 }
-void LCD_show_RTC(void)
-{
-	int x=0,y=0;
-	RTC_TimeTypeDef RTC_TimeStruct;
-	u8 temp_buff[40]; 
 
-	//显示时间
-	x=142;y=295;
-	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
-	sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
-	//printf("%s\n",temp_buff);
-	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
-}
 
 //跳转到设置光照阈值的界面
 
-
 extern const u8 gImage_set_light[];//设置光照阈值界面
 extern const u8 gImage_set_time[]; //设置定时
-
 extern const u8 gImage_smart_mode[];
 extern const u8 gImage_hand_mode[];
 
-
 u8 curtain_status;//0:窗帘关闭
-
-
-
-/*
-   功能：对光照阈值进行设置，并写入到at24c02中
-
-		内存不足舍弃了
-*/
-
-void SET_lightcondition(void)
-{
-	//1、显示图片
-	u8 choose=0;
-	u8 buff;
-	
-	Xdown=-1;
-	Ydown=-1;
-	
-	
-	AT24CXX_Read(1,(u8 *)&buff,1);
-	if(buff==1)
-	{
-		LCD_DisplayChinese_one(105,45,21,24);
-	}
-	else if(buff==2)
-	{
-		LCD_DisplayChinese_one(105,45,22,24);
-	}
-	else if(buff==3)
-	{
-		
-		LCD_DisplayChinese_one(105,45,23,24);
-	}
-	
-	while(1)
-	{
-		XPT2046_Scan(0);
-		//弱
-		if(Xdown>20&&Xdown<80&&Ydown>85&&Ydown<125)
-		{
-			delay_ms(200);
-			LCD_DisplayChinese_one(105,45,21,24);
-			choose=1;
-		}
-		//中
-		if(Xdown>85&&Xdown<145&&Ydown>85&&Ydown<125)
-		{
-			delay_ms(200);
-			LCD_DisplayChinese_one(105,45,22,24);
-			choose=2;
-		}
-		//强
-		if(Xdown>150&&Xdown<210&&Ydown>85&&Ydown<125)
-		{
-			delay_ms(200);
-			LCD_DisplayChinese_one(105,45,23,24);
-			choose=3;
-		}
-		//确认-----------之后返回至主界面
-		if(Xdown>97&&Xdown<147&&Ydown>134&&Ydown<187)
-		{
-			delay_ms(200);
-			
-			AT24CXX_WriteOneByte(1,choose);
-			printf("light successful\n");
-			
-			//delay_ms(100);
-			//AT24CXX_Read(1,(u8 *)&buff,1);
-			//printf("choose = %d\n",choose);
-			
-			//add 
-			
-			break;
-			
-		}
-		
-		//返回按钮--------返回至主界面
-		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
-		{
-			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
-			delay_ms(200);
-			break;
-		}
-	}
-}	
 
 /*
 	功能：定时窗帘的开或者关---注意：把提示换成中文的
@@ -663,23 +565,127 @@ void ADJUST_time(u8 option,u8 shanshuo)
 			  switch(option)
 				{
 				  case 0: RTC_DateStruct.RTC_Year+=1;   break;
-					case 1: RTC_DateStruct.RTC_Month+=1;  break;
-					case 2: RTC_DateStruct.RTC_Date+=1;   break;
-					case 3: RTC_TimeStruct.RTC_Hours+=1;  break;
-					case 4: RTC_TimeStruct.RTC_Minutes+=1;break;
-					case 5: RTC_TimeStruct.RTC_Seconds+=1;break;
+					case 1:
+								if(RTC_DateStruct.RTC_Month==12)
+								{
+									RTC_DateStruct.RTC_Month=1;
+								}
+								else
+								RTC_DateStruct.RTC_Month+=1;  
+								break;
+					case 2: 
+								if(RTC_DateStruct.RTC_Date==28)
+								{
+									
+								}
+								else
+								RTC_DateStruct.RTC_Date+=1;   
+								break;
+					case 3: 
+								if(RTC_TimeStruct.RTC_Hours==23)
+								{
+									RTC_TimeStruct.RTC_Hours=0;
+								}
+								else
+								RTC_TimeStruct.RTC_Hours+=1;  
+								break;
+					case 4: 
+								if(RTC_TimeStruct.RTC_Minutes==59)
+								{
+									RTC_TimeStruct.RTC_Minutes=0;
+								}
+								else
+								RTC_TimeStruct.RTC_Minutes+=1;
+								break;
+					case 5: 
+								if(RTC_TimeStruct.RTC_Seconds==59)
+								{
+									RTC_TimeStruct.RTC_Seconds=0;
+								}
+								else
+								RTC_TimeStruct.RTC_Seconds+=1;
+								break;
 				}	
 			}
 			if(keydown_data==KEY1_DATA)
 			{
 			  switch(option)
 				{
-				  case 0: RTC_DateStruct.RTC_Year-=1;   break;
-					case 1: RTC_DateStruct.RTC_Month-=1;  break;
-					case 2: RTC_DateStruct.RTC_Date-=1;   break;
-					case 3: RTC_TimeStruct.RTC_Hours-=1;  break;
-					case 4: RTC_TimeStruct.RTC_Minutes-=1;break;
-					case 5: RTC_TimeStruct.RTC_Seconds-=1;break;
+				  case 0: RTC_DateStruct.RTC_Year-=1; break;
+					case 1: 
+								if(RTC_DateStruct.RTC_Month==0)
+								{
+									RTC_DateStruct.RTC_Month=12;
+								}
+								else
+								RTC_DateStruct.RTC_Month-=1;
+								break;
+					case 2: 
+								if(RTC_DateStruct.RTC_Date==1)
+								{
+									if((RTC_DateStruct.RTC_Year)%4==0&&(RTC_DateStruct.RTC_Month)==2)
+									{
+										RTC_DateStruct.RTC_Date=29;
+									}
+									else
+									{
+										if((RTC_DateStruct.RTC_Month)==2)
+										{
+											RTC_DateStruct.RTC_Date=28;
+										}
+										else
+										{
+											switch((RTC_DateStruct.RTC_Month))
+											{
+												case 1:
+												case 3:
+												case 5:
+												case 7:
+												case 8:
+												case 10:
+												case 12:
+																RTC_DateStruct.RTC_Date=31;
+												break;
+												
+												case 4:
+												case 6:
+												case 9:
+												case 11:
+																RTC_DateStruct.RTC_Date=30;
+												break;
+											}
+										}
+									}
+								}
+								else								
+								RTC_DateStruct.RTC_Date-=1;//考虑到
+							
+								break;
+					case 3: 
+								if(RTC_TimeStruct.RTC_Hours==0)
+								{
+									RTC_TimeStruct.RTC_Hours=23;
+								}
+								else
+								RTC_TimeStruct.RTC_Hours-=1;
+							
+								break;
+					case 4: 
+								if(RTC_TimeStruct.RTC_Hours==0)
+								{
+									RTC_TimeStruct.RTC_Minutes=59;
+								}
+								else
+								RTC_TimeStruct.RTC_Minutes-=1;
+								break;
+					case 5: 
+								if(RTC_TimeStruct.RTC_Seconds==0)
+								{
+									RTC_TimeStruct.RTC_Seconds=59;
+								}
+								else
+								RTC_TimeStruct.RTC_Seconds-=1;
+								break;
 				}	
 			}
 		}
@@ -706,7 +712,7 @@ void ADJUST_time(u8 option,u8 shanshuo)
 	}
 }	
 
-
+u8 enter_set_time=0;
 void SET_time(void)
 {
 	//注：有一些函数是初始化过了的，整合时候要删除
@@ -795,7 +801,7 @@ void SET_time(void)
 		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
 		{
 			delay_ms(200);
-			
+			enter_set_time=0;
 			//printf("break successful\n");
 			break;
 		}
@@ -957,7 +963,26 @@ void SET_time(void)
 	}	
 }
 
-
+/*
+	功能：在00：00-06：00利用人体红外检测检测蜂鸣器警报
+	用户开启后才起作用
+*/
+void beepalarm_in_night(void)
+{
+	int haspeople=0;
+	haspeople=People_scan();
+	if(haspeople==1)
+	{
+		//BEEP=1;
+		printf("people is coming\n");
+	}
+	else
+	{
+		//BEEP=0;
+		printf("no people \n");
+	}
+}
+//-*****************************************//
 
 
 int main()
@@ -984,6 +1009,7 @@ int main()
   KEY_init();
 	EXTI_init( );
 	
+	
 	UART1_init(115200);
 	printf("reset ----\n");
 	
@@ -1003,7 +1029,7 @@ int main()
 	
 	//ALL_SENSOR_init();
 	LCD_init();  //初始化LCD FSMC接口和显示驱动
-
+	
 	
 	Touch_Init();				//触摸屏的初始化
 	
@@ -1016,11 +1042,10 @@ int main()
 	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
 	
 	//R_Touch_test(); //函数中间有一个循环检测触摸屏
-	LCD_showdate();
-	
+
+	People_init();
 	//先对24C02存储的值进行判断，先初始化一下
-	//AT24CXX_Write(0,(u8*)date_buff,strlen(date_buff));
-	
+
 	//光照阈值
 	AT24CXX_Read(1,&status,1);
 	if(status!=1&&status!=2&&status!=3)
@@ -1051,7 +1076,8 @@ int main()
 			case 1://------------------------------智能模式--------------------
 				
 				image_display(0,0,(u8*)gImage_smart_mode);
-				
+				LCD_showdate();//五秒刷新一次，到时候
+			
 				AT24CXX_Read(1,&light_status,1);
 				if(light_status==1)//弱
 				{
@@ -1180,16 +1206,19 @@ int main()
 							beep_status=0;
 							AT24CXX_Write(2,&beep_status,1);
 						}
-						
-						
 						printf("蜂鸣器\n");
 					}
+					if(Zero_to_six_clock==1&&beep_status==1)
+					{
+						beepalarm_in_night();
+					}
+					
 				}
 				break;
 			
 			case 0://-------------------------手动-------------------------
 				image_display(0,0,(u8*)gImage_hand_mode);
-
+				LCD_showdate();
 //-----------------------------------------------------------			
 				//窗帘状态----到时候会先去读取该值的
 				if(curtain_status==0)
@@ -1265,7 +1294,9 @@ int main()
 					if(Xdown>190&&Xdown<230&&Ydown>226&&Ydown<266)
 					{
 						delay_ms(200);
+						enter_set_time=1;
 						SET_time();
+						
 						break;//重新进入手动模式，刷新界面
 					}
 					
@@ -1286,11 +1317,12 @@ int main()
 							beep_status=0;
 							AT24CXX_Write(2,&beep_status,1);
 						}
-						
-						
 						//printf("蜂鸣器\n");
 					}
-					
+					if(Zero_to_six_clock==1&&beep_status==1)
+					{
+						beepalarm_in_night();
+					}
 				}
 				break;
 		}
