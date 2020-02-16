@@ -764,14 +764,9 @@
               <FilePath>..\HARDWARE\IMAGE2LCD\set_time.c</FilePath>
             </File>
             <File>
-              <FileName>on_on.c</FileName>
+              <FileName>off_off.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\on_on.c</FilePath>
-            </File>
-            <File>
-              <FileName>on_off.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\on_off.c</FilePath>
+              <FilePath>..\HARDWARE\IMAGE2LCD\off_off.c</FilePath>
             </File>
             <File>
               <FileName>off_on.c</FileName>
@@ -779,9 +774,14 @@
               <FilePath>..\HARDWARE\IMAGE2LCD\off_on.c</FilePath>
             </File>
             <File>
-              <FileName>off_off.c</FileName>
+              <FileName>on_off.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\off_off.c</FilePath>
+              <FilePath>..\HARDWARE\IMAGE2LCD\on_off.c</FilePath>
+            </File>
+            <File>
+              <FileName>on_on.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\on_on.c</FilePath>
             </File>
           </Files>
         </Group>

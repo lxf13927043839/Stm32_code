@@ -48,7 +48,7 @@ void get_sensor_data(char *data_buff);
 #define SIZE_of_DATA 22
 unsigned char data_buff[SIZE_of_DATA]={"#11,22,3.2,4.0,55,1,0#"};
 
-char Weekday[][15]={{"Monday"},{"Tuesday"},{"Wednesday"},{"Thursday"},{"Friday"},{"Saturday"},{"Sunday"}}; 
+//char Weekday[][15]={{"Monday"},{"Tuesday"},{"Wednesday"},{"Thursday"},{"Friday"},{"Saturday"},{"Sunday"}}; 
             
           
            
@@ -434,10 +434,6 @@ void get_sensor_data(char *data_buff)
 	温(0) 湿(1) 度(2) 光(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
        式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
  */
-int chinese[]={0,2,-1};//温度
-int chinese1[]={1,2,-1};//湿度
-int chinese2[]={3,4,5,6,-1};//光照强度
-int chinese3[]={3,4,17,18,-1};//光照阈值
 
 void LCD_show_RTC(void);
 void LCD_showdate(void)
@@ -516,33 +512,34 @@ void LCD_show_RTC(void)
 }
 
 //跳转到设置光照阈值的界面
-HEADCOLOR *imginfo;//显示图片的时候都可以用到
 
-extern const u8 gImage_smart_on[];//智能模式，蜂鸣器开
-extern const u8 gImage_smart_off[];//智能模式，蜂鸣器关
-char smart_change_flag=1;
-
-extern const u8 gImage_on_on[]; //蜂鸣器开，窗帘开
-extern const u8 gImage_on_off[];//蜂鸣器开，窗帘关
-extern const u8 gImage_off_on[];//蜂鸣器关，窗帘开
-extern const u8	gImage_off_off[];//蜂鸣器关，窗帘关
 
 extern const u8 gImage_set_light[];//设置光照阈值界面
 extern const u8 gImage_set_time[]; //设置定时
 
+extern const u8 gImage_smart_mode[];
+extern const u8 gImage_hand_mode[];
+
+
+u8 curtain_status;//0:窗帘关闭
+
+
 
 /*
    功能：对光照阈值进行设置，并写入到at24c02中
+
+		内存不足舍弃了
 */
+
 void SET_lightcondition(void)
 {
 	//1、显示图片
 	u8 choose=0;
 	u8 buff;
-	imginfo=(HEADCOLOR*)gImage_set_light;
-	image_display(0,0,(u8*)gImage_set_light);
+	
 	Xdown=-1;
 	Ydown=-1;
+	
 	
 	AT24CXX_Read(1,(u8 *)&buff,1);
 	if(buff==1)
@@ -565,21 +562,21 @@ void SET_lightcondition(void)
 		//弱
 		if(Xdown>20&&Xdown<80&&Ydown>85&&Ydown<125)
 		{
-			delay_ms(300);
+			delay_ms(200);
 			LCD_DisplayChinese_one(105,45,21,24);
 			choose=1;
 		}
 		//中
 		if(Xdown>85&&Xdown<145&&Ydown>85&&Ydown<125)
 		{
-			delay_ms(300);
+			delay_ms(200);
 			LCD_DisplayChinese_one(105,45,22,24);
 			choose=2;
 		}
 		//强
 		if(Xdown>150&&Xdown<210&&Ydown>85&&Ydown<125)
 		{
-			delay_ms(300);
+			delay_ms(200);
 			LCD_DisplayChinese_one(105,45,23,24);
 			choose=3;
 		}
@@ -596,8 +593,7 @@ void SET_lightcondition(void)
 			//printf("choose = %d\n",choose);
 			
 			//add 
-			imginfo=(HEADCOLOR*)gImage_smart_on;
-			image_display(0,0,(u8*)gImage_smart_on);
+			
 			break;
 			
 		}
@@ -606,12 +602,7 @@ void SET_lightcondition(void)
 		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
 		{
 			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
-			delay_ms(300);
-			
-			//这里要到后边还要继续有一个判断，看显示的是哪一张图
-			//add 
-			imginfo=(HEADCOLOR*)gImage_smart_on;
-			image_display(0,0,(u8*)gImage_smart_on);
+			delay_ms(200);
 			break;
 		}
 	}
@@ -768,7 +759,7 @@ void SET_time(void)
 	
 
 	//显示界面
-	imginfo=(HEADCOLOR*)gImage_set_time;
+	
 	image_display(0,0,(u8*)gImage_set_time);
 	
 	//判断之前是否有设置了定时
@@ -804,9 +795,9 @@ void SET_time(void)
 		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
 		{
 			delay_ms(200);
-			printf("break successful\n");
-			break;
 			
+			//printf("break successful\n");
+			break;
 		}
 		//开
 		if(Xdown>30&&Xdown<86&&Ydown>145&&Ydown<183)
@@ -833,8 +824,6 @@ void SET_time(void)
 			//在添加上把at24c02里边的值清理干净
 			
 			AT24CXX_Write(4,(u8*)&curtain_status,1);
-			
-
 		}
 		
 		
@@ -967,15 +956,27 @@ void SET_time(void)
 		delay_ms(5); //系统延时，也算是系统计时
 	}	
 }
+
+
+
+
 int main()
 {
 	int only_test=0;
 	int people=0;
 	int i=0,cycle=0,T=2048;
+	/*
+		定义标志变量
+		初始值都是-1
+		在变量后边，对所赋值进行说明
+	*/
+	u8 status;
+	u8 beep_status=0;//1:开启 0：关闭
+	u8 system_mode=0;//1:智能 0：手动
+	int chinese_mode[3]={11,12,-1};//模式的名字:智能
+	u8 light_status=0;//1:弱 2：中 3：强
+	
 	//test
-	
-	imginfo=(HEADCOLOR*)gImage_smart_on;
-	
 	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
 	
 	BEEP_init();
@@ -1015,56 +1016,284 @@ int main()
 	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
 	
 	//R_Touch_test(); //函数中间有一个循环检测触摸屏
-	image_display(0,0,(u8*)gImage_smart_on);
 	LCD_showdate();
 	
+	//先对24C02存储的值进行判断，先初始化一下
+	//AT24CXX_Write(0,(u8*)date_buff,strlen(date_buff));
 	
+	//光照阈值
+	AT24CXX_Read(1,&status,1);
+	if(status!=1&&status!=2&&status!=3)
+	{
+		status=1;
+		AT24CXX_Write(1,&status,1);
+	}
+	//夜晚蜂鸣器
+	AT24CXX_Read(2,&status,1);
+	if(status!=0&&status!=1)
+	{
+		status=0;
+		AT24CXX_Write(2,&status,1);
+	}
+	//模式
+	AT24CXX_Read(3,&status,1);
+	if(status!=0&&status!=1)
+	{
+		status=0;
+		AT24CXX_Write(3,&status,1);
+	}
+	
+
 	while(1)
 	{
-		XPT2046_Scan(0);//长按有反应，待解决 		 
-		/*
-		if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+		switch(status)
 		{
-			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
-			if(smart_change_flag==1)
-			{
-				imginfo=(HEADCOLOR*)gImage_smart_off;
-				image_display(0,0,(u8*)gImage_smart_off);
-				smart_change_flag=0;
-			}
-			else if(smart_change_flag==0)
-			{
-				imginfo=(HEADCOLOR*)gImage_smart_on;
-				image_display(0,0,(u8*)gImage_smart_on);
-				smart_change_flag=1;
-			}
-			delay_ms(200);
-		}
-		*/
-		//设置光照阈值
-		if(Xdown>164&&Xdown<204&&Ydown>140&&Ydown<180)
-		{
-			printf("(x,y)=(%d,%d)\n",Xdown,Ydown);
-			delay_ms(300);
-			SET_lightcondition();
-		}
-		//到时要模式来选择，先分智能与手动
-		
-		//设置定时开关
-		if(Xdown>190&&Xdown<230&&Ydown>226&&Ydown<266)
-		{
-			delay_ms(300);
-			SET_time();
-		}
-		
-		//夜晚蜂鸣器
-		if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
-		{
-			delay_ms(200);
+			case 1://------------------------------智能模式--------------------
+				
+				image_display(0,0,(u8*)gImage_smart_mode);
+				
+				AT24CXX_Read(1,&light_status,1);
+				if(light_status==1)//弱
+				{
+					LCD_DisplayChinese_one(167,148,21,24);
+				}else if(light_status==2)//中
+				{
+					LCD_DisplayChinese_one(167,148,22,24);
+				}else if(light_status==3)//强
+				{
+					LCD_DisplayChinese_one(167,148,23,24);
+				}
 			
+				//窗帘状态----到时候会先去读取该值的
+				if(curtain_status==0)
+				{
+					LCD_DisplayChinese_one(135,185,25,24);
+				}
+				else if(curtain_status==1)
+				{
+					LCD_DisplayChinese_one(135,185,24,24);
+				}
+				
+				//显示模式
+				chinese_mode[0]=11;
+				chinese_mode[1]=12;
+				LCD_DisplayChinese_string(135,223,24,chinese_mode);
 			
+				//夜晚蜂鸣器
+				AT24CXX_Read(2,&beep_status,1);
+				if(beep_status==0)
+				{
+					LCD_DisplayChinese_one(205,264,25,24);
+				}
+				else if(beep_status==1)
+				{
+					LCD_DisplayChinese_one(205,264,24,24);
+				}
+//---------------------------------------------------------------------			
+				while(1)
+				{
+					XPT2046_Scan(0);
+					//------------加光照阈值-------------
+					if(Xdown>128&&Xdown<164&&Ydown>143&&Ydown<179)
+					{
+						delay_ms(200);
+						
+						light_status++;
+						if(light_status>3)
+						{
+							light_status=1;
+							LCD_DisplayChinese_one(167,148,21,24);
+						}
+						else
+						{
+							if(light_status==1)
+							{
+								LCD_DisplayChinese_one(167,148,21,24);
+							}
+							else if(light_status==2)
+							{
+								LCD_DisplayChinese_one(167,148,22,24);
+							}
+							else if(light_status==3)
+							{
+								LCD_DisplayChinese_one(167,148,23,24);
+							}
+						}
+						
+						AT24CXX_Write(1,&light_status,1);
+						
+					}
+					//-------------减光照阈值-------------------
+					if(Xdown>195&&Xdown<231&&Ydown>143&&Ydown<179)
+					{
+						delay_ms(200);
+						
+						light_status--;
+						if(light_status<1)
+						{
+							light_status=3;
+							LCD_DisplayChinese_one(167,148,23,24);
+						}
+						else
+						{
+							if(light_status==1)
+							{
+								LCD_DisplayChinese_one(167,148,21,24);
+							}
+							else if(light_status==2)
+							{
+								LCD_DisplayChinese_one(167,148,22,24);
+							}
+							else if(light_status==3)
+							{
+								LCD_DisplayChinese_one(167,148,23,24);
+							}
+						}
+						AT24CXX_Write(1,&light_status,1);
+					}
+					
+					//切换模式
+					if(Xdown>5&&Xdown<45&&Ydown>206&&Ydown<246)
+					{
+						delay_ms(200);
+						status=0;
+						
+						system_mode=0;
+						AT24CXX_Write(3,&system_mode,1);
+						
+						break;
+					}
+					//夜晚蜂鸣器
+					if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+					{
+						delay_ms(200);
+						
+						if(beep_status==0)
+						{
+							LCD_DisplayChinese_one(205,264,24,24);
+							beep_status=1;
+							AT24CXX_Write(2,&beep_status,1);
+						}
+						else if(beep_status==1)
+						{
+							LCD_DisplayChinese_one(205,264,25,24);
+							beep_status=0;
+							AT24CXX_Write(2,&beep_status,1);
+						}
+						
+						
+						printf("蜂鸣器\n");
+					}
+				}
+				break;
+			
+			case 0://-------------------------手动-------------------------
+				image_display(0,0,(u8*)gImage_hand_mode);
+
+//-----------------------------------------------------------			
+				//窗帘状态----到时候会先去读取该值的
+				if(curtain_status==0)
+				{
+					LCD_DisplayChinese_one(140,143,25,24);
+				}
+				else if(curtain_status==1)
+				{
+					LCD_DisplayChinese_one(140,143,24,24);
+				}
+			
+				
+				//显示模式
+				chinese_mode[0]=13;
+				chinese_mode[1]=14;
+				LCD_DisplayChinese_string(140,173,24,chinese_mode);
+				
+				
+				//夜晚蜂鸣器
+				AT24CXX_Read(2,&beep_status,1);
+				if(beep_status==0)
+				{
+					LCD_DisplayChinese_one(205,264,25,24);
+				}
+				else if(beep_status==1)
+				{
+					LCD_DisplayChinese_one(205,264,24,24);
+				}
+//---------------------------------------------------------------------			
+			
+				while(1)
+				{
+					XPT2046_Scan(0);
+					
+					//切换模式
+					if(Xdown>0&&Xdown<40&&Ydown>168&&Ydown<208)
+					{
+						delay_ms(300);
+						status=1;
+						
+						system_mode=1;
+						AT24CXX_Write(3,&system_mode,1);
+						//printf("switch \n");
+						break;
+					}
+					
+					//窗帘ON
+					if(Xdown>100&&Xdown<143&&Ydown>203&&Ydown<245)
+					{
+						delay_ms(200);
+						LCD_DisplayChinese_one(140,143,24,24);
+						
+						curtain_status=1;
+						//add 马上发送消息到服务器上，不要切太快
+						
+						
+						//printf("on \n");
+					}
+					
+					//窗帘OFF
+						if(Xdown>147&&Xdown<190&&Ydown>203&&Ydown<245)
+					{
+						delay_ms(200);
+						LCD_DisplayChinese_one(140,143,25,24);
+						
+						curtain_status=0;
+						//add 马上发送消息到服务器上，不要切太快
+						
+						//printf("off \n");
+					}
+					
+					//设置定时开关
+					if(Xdown>190&&Xdown<230&&Ydown>226&&Ydown<266)
+					{
+						delay_ms(200);
+						SET_time();
+						break;//重新进入手动模式，刷新界面
+					}
+					
+					//夜晚蜂鸣器
+					if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+					{
+						delay_ms(300);
+						
+						if(beep_status==0)
+						{
+							LCD_DisplayChinese_one(205,264,24,24);
+							beep_status=1;
+							AT24CXX_Write(2,&beep_status,1);
+						}
+						else if(beep_status==1)
+						{
+							LCD_DisplayChinese_one(205,264,25,24);
+							beep_status=0;
+							AT24CXX_Write(2,&beep_status,1);
+						}
+						
+						
+						//printf("蜂鸣器\n");
+					}
+					
+				}
+				break;
 		}
-		
 	}
 
 }
