@@ -24,6 +24,10 @@
 
 
 
+u8 has_set_time_online=0;
+u8 set_time_buff[18];
+
+
 void delay_ms(u16 nms);
 //---------------------显示单个汉字与汉字字符串--------------------------
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
@@ -49,12 +53,7 @@ void get_sensor_data(char *data_buff);
 unsigned char data_buff[SIZE_of_DATA]={"#11,22,3.2,4.0,55,1,0#"};
 
 //char Weekday[][15]={{"Monday"},{"Tuesday"},{"Wednesday"},{"Thursday"},{"Friday"},{"Saturday"},{"Sunday"}}; 
-            
-          
-           
-             
-           
-             
+                 
 
 #define SIZE_from_SEVRVER 50
 char data_fromserver[SIZE_from_SEVRVER];
@@ -484,14 +483,6 @@ void LCD_showdate(void)
 	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
 
 
-	
-	
-	//显示星期
-	y=24*4;
-	sprintf((char*)temp_buff,"Week:%s",Weekday[RTC_DateStruct.RTC_WeekDay-1]);
-	//printf("%s\n",temp_buff);
-	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
-
 	//显示光照阈值
 	y=24*6;
 	LCD_DisplayChinese_string(x,y,24,chinese3);
@@ -574,9 +565,38 @@ void ADJUST_time(u8 option,u8 shanshuo)
 								RTC_DateStruct.RTC_Month+=1;  
 								break;
 					case 2: 
-								if(RTC_DateStruct.RTC_Date==28)
+								if(RTC_DateStruct.RTC_Date==28&&RTC_DateStruct.RTC_Month==2&&RTC_DateStruct.RTC_Year%4!=0)
 								{
-									
+									RTC_DateStruct.RTC_Date=1;
+								}
+								else if(RTC_DateStruct.RTC_Date==29&&RTC_DateStruct.RTC_Month==2&&RTC_DateStruct.RTC_Year%4==0)
+								{
+									RTC_DateStruct.RTC_Date=1;
+								}
+								else if(RTC_DateStruct.RTC_Date==30)
+								{
+									switch(RTC_DateStruct.RTC_Month)
+									{
+										case 4:
+										case 6:
+										case 9:
+										case 11:
+														RTC_DateStruct.RTC_Date=1;
+														break;
+										case 1:
+										case 3:
+										case 5:
+										case 7:
+										case 8:
+										case 10:
+										case 12:
+														RTC_DateStruct.RTC_Date+=1;
+														break;
+									}
+								}
+								else if(RTC_DateStruct.RTC_Date==31)
+								{
+									RTC_DateStruct.RTC_Date=1;
 								}
 								else
 								RTC_DateStruct.RTC_Date+=1;   
@@ -613,7 +633,7 @@ void ADJUST_time(u8 option,u8 shanshuo)
 				{
 				  case 0: RTC_DateStruct.RTC_Year-=1; break;
 					case 1: 
-								if(RTC_DateStruct.RTC_Month==0)
+								if(RTC_DateStruct.RTC_Month==1)
 								{
 									RTC_DateStruct.RTC_Month=12;
 								}
@@ -724,13 +744,14 @@ void SET_time(void)
 	u8 now_date_buff[40];//当前的日期
 	u8 now_time_buff[40];//当前的时间
 
-	u8 time_buff[40];//存放定时的时间
+	u8 time_buff[40]={0};//存放定时的时间,没有初始化会出现一些意外的bug，如出现一斜杆
 	u8 date_buff[40];//存放定时的日期
 	u8 test[40];//从24c02 读取数据测试
 	u8 curtain_status=3;//窗帘状态,只有0/1 状态是有效的，其他数字是无效的
 	short set_tim_success=-1; //时间的设置是正常的 
 	u8 had_settimeflag=3; //检测是否有设置了
 	u8 temp;
+	u8 set_curtain_status;//
 	/*
 	char temp[]="20200215";
 	char temp1[]="20200315";
@@ -775,11 +796,13 @@ void SET_time(void)
 		//printf("正在画图\n");
 		
 		AT24CXX_Read(5,(u8 *)date_buff,10);
-		delay_ms(50);
+		delay_ms(100);
 		AT24CXX_Read(15,(u8 *)time_buff,8);
 		
 		LCD_DisplayString_color(70,57,24,date_buff,BLUE,WHITE);
 		LCD_DisplayString_color(70,81,24,time_buff,BLUE,WHITE);
+		
+		//printf("######################time_buff = %s \n",time_buff);
 		
 		if(had_settimeflag==0)
 		{
@@ -826,10 +849,10 @@ void SET_time(void)
 			
 			image_display(0,0,(u8*)gImage_set_time);
 			process=0;
-			curtain_status=3;
+			set_curtain_status=3;
 			//在添加上把at24c02里边的值清理干净
-			
-			AT24CXX_Write(4,(u8*)&curtain_status,1);
+			AT24CXX_Write(4,(u8*)&set_curtain_status,1);
+			has_set_time_online=0;
 		}
 		
 		
@@ -935,11 +958,12 @@ void SET_time(void)
 									AT24CXX_Write(5,(u8*)date_buff,strlen(date_buff));
 									delay_ms(50);
 									AT24CXX_Write(15,(u8*)time_buff,strlen(time_buff));
-									//delay_ms(50);
+									delay_ms(50);
 									
-									//AT24CXX_Read(5,test,strlen(date_buff)+strlen(time_buff));
+									AT24CXX_Read(5,set_time_buff,strlen(date_buff)+strlen(time_buff));
 									
 									//printf("test = %s\n",test);
+									has_set_time_online=1;
 									
 								  option=0;    //选项从头来
 									process=0;   //短按KEY3时间设置完成 返回到时间显示

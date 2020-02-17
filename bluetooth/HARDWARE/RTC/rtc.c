@@ -3,6 +3,9 @@
 #include "usart.h"
 #include "led.h"
 #include "lcd.h"
+#include "24cxx.h"
+#include "myiic.h"
+
 
 RTC_TimeTypeDef RTC_TimeStruct;
 RTC_DateTypeDef RTC_DateStruct;
@@ -149,12 +152,19 @@ void RTC_Alarm_IRQHandler(void)
 u8 Zero_to_six_clock=0;//1代表0-6时刻来临，0：未来到
 extern u8 enter_set_time;
 
+extern u8 has_set_time_online;
+extern u8 set_time_buff[];
+
 void LCD_showtime_RTC(void)
 {
+	static char first=0;
+	u8 had_set;
+	u8 curtain_flag;
+	//-------------------------------------------------------------------------------------
 	int x=0,y=0;
 	RTC_TimeTypeDef RTC_TimeStruct;
 	u8 temp_buff[40]; 
-
+	
 	//显示时间
 	x=142;y=295;
 	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
@@ -163,25 +173,67 @@ void LCD_showtime_RTC(void)
 	if(RTC_TimeStruct.RTC_Hours>=0&&RTC_TimeStruct.RTC_Hours<=5)//00：00
 	{
 		Zero_to_six_clock=1;
-		printf("zero to six is arrival\n");
+		//printf("zero to six is arrival\n");
 	}
   else
 	{
 		Zero_to_six_clock=0;
-		printf("six is arrival\n");
+		//printf("six is arrival\n");
 	}
 	if(enter_set_time==0)
 	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+	
+	//-----------------判断是否有设置了定时-------
+
+	//考虑重启情况
+	if(first==0)
+	{
+		AT24CXX_Read(4,&had_set,1);
+		if(had_set==1||had_set==0)
+		{
+			has_set_time_online=1;
+			AT24CXX_Read(5,set_time_buff,18);
+			//printf("set_time_buff = %s\n",set_time_buff);
+		}
+		first=1;
+	}
+	//实时在线的情况
+	if(has_set_time_online==1)
+	{
+		sprintf((char*)temp_buff,"20%02d-%02d-%02d%02d:%02d:%02d",RTC_DateStruct.RTC_Year,RTC_DateStruct.RTC_Month,RTC_DateStruct.RTC_Date
+		,RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
+		//printf("temp_buff = %s \n",temp_buff);
+		if(strcmp((char *)set_time_buff,(char *)temp_buff)==0)
+		{
+			AT24CXX_Read(4,&curtain_flag,1);
+			if(curtain_flag==1)
+			{
+				printf("open operation \n");
+				//add open operation
+			}
+			else if(curtain_flag==0)
+			{
+				printf("close operation \n");
+				//add close operation
+			}
+			curtain_flag=3;
+			AT24CXX_Write(4,&curtain_flag,1);
+			has_set_time_online=0;
+		}
+	}
+	
 }
+
 
 
 //RTC wake up中断服务函数
 void RTC_WKUP_IRQHandler(void)
 {
+	
 	if(RTC_GetFlagStatus(RTC_FLAG_WUTF)==SET)//WK_UP 中断
 	{
 		RTC_ClearFlag(RTC_FLAG_WUTF); //
-		LCD_showtime_RTC();
+		LCD_showtime_RTC();		
 		LED0=!LED0;
 	}
 	EXTI_ClearITPendingBit(EXTI_Line22);//
