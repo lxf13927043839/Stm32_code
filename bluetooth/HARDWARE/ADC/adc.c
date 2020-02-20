@@ -70,9 +70,33 @@ u16 Get_Adc_Average(u8 ch,u8 times)
 	}
 	return temp_val/times;
 } 
-	 
 
+//-------------------------														   
+void  ADC310_init(void)
+{    
+  GPIO_InitTypeDef  GPIO_InitStructure;
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);//使能GPIOC时钟
+ 
+  //先初始化ADC3通道10 IO口
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;//PC0 通道10
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;//模拟输入
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;//不带上下拉
+  GPIO_Init(GPIOC, &GPIO_InitStructure);//初始化  
+}				  
+//PF1作为窗帘关闭的检查条件
 
+#define Light GPIO_ReadInputDataBit(GPIOF,GPIO_Pin_1)
+void Light_init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOF,ENABLE);
+	GPIO_InitStruct.GPIO_Mode=GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_OType=GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_Pin=GPIO_Pin_1;
+	GPIO_InitStruct.GPIO_PuPd=GPIO_PuPd_UP;
+	GPIO_InitStruct.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_Init(GPIOF, &GPIO_InitStruct);
+}
 
 
 

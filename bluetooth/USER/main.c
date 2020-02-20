@@ -22,12 +22,16 @@
 #include "xpt2046.h"
 #include "image2lcd.h"
 
-
+//还没有添加定时上传服务器功能
 
 u8 has_set_time_online=0;
 u8 set_time_buff[18];
+//---------------------------------------------------------------------------
+u8 beep_status; //蜂鸣器状态位 1：开 0：关
 
+u8 curtain_status;//0:窗帘关闭
 
+//---------------------------------------------------------------------------
 void delay_ms(u16 nms);
 //---------------------显示单个汉字与汉字字符串--------------------------
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
@@ -36,9 +40,9 @@ void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p);
 void LCD_DisplayChar(u16 x,u16 y,u8 word,u8 size); //显示一个字符
 void LCD_DisplayString(u16 x,u16 y,u8 size,u8 *p); //显示一个12/16/24字体字符串
 
-
+void get_all_status_data(char *data_buff);
 //---------------------ESP8266--115200--------------------------------------
-//void front_rotate(void);
+//void front_rotate(void); //电机转动要把电池的电量考虑进去
 //void area_rotate(void);
 //void stop_rotate(void);
 
@@ -69,6 +73,7 @@ void UART4_IRQHandler(void)
 {
 	int i=0;
 	uint16_t data;
+	u8 temp=5;
 	//把收到的来自esp8266 模块的数据，通过USART1发给PC
 	if(USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)
 	{
@@ -141,18 +146,73 @@ void UART4_IRQHandler(void)
 							{
 								data_fromserver[num_from_server-1]='\0';
 								LED1=!LED1;
-								//##################
+								//对命令的处理
 								
-								printf("the order from server-----%s=%d",data_fromserver,strlen(data_fromserver));
+								printf("order from server = %s=%d",data_fromserver,strlen(data_fromserver));
 								
-								if(strcmp(data_fromserver,"hello")==0)
+								
+								
+								if(strcmp(data_fromserver,"curt_on")==0)//窗帘开
 								{
-									printf("the order has received\n");
-									//front_rotate();
+									AT24CXX_Read(3,(u8 *)&temp,1);//在手动模式下才能控制 , 打漏了取地址的符号
+									
+									if(temp==0)
+									{
+										curtain_status=1;
+										LCD_DisplayChinese_one(140,143,24,24);
+										//add 电机控制
+										
+										//printf("窗帘开测试\n");
+									}
+									
+									
+									
 								}
-								else if(strcmp(data_fromserver,"world")==0)
+								else if(strcmp(data_fromserver,"curt_off")==0)//窗帘关
 								{
-									//stop_rotate();
+									AT24CXX_Read(3,(u8 *)&temp,1);
+									if(temp==0)
+									{
+										curtain_status=0;
+										LCD_DisplayChinese_one(140,143,25,24);
+										
+										//add 电机控制
+									}
+								
+									
+								}else if(strcmp(data_fromserver,"smart_on")==0)//开智能模式
+								{
+									
+								}
+								else if(strcmp(data_fromserver,"smart_off")==0)//关智能模式
+								{
+									
+								}
+								else if(strcmp(data_fromserver,"setti_on ")==0)//设置定时开
+								{
+									
+								}
+								else if(strcmp(data_fromserver,"setti_off")==0)//设置定时关
+								{
+									
+								}
+								else if(strcmp(data_fromserver,"alarm_on")==0)//开夜晚蜂鸣器警报
+								{
+									LCD_DisplayChinese_one(205,264,24,24);
+									beep_status=1;
+									AT24CXX_Write(2,&beep_status,1);
+								}
+								else if(strcmp(data_fromserver,"alarm_off")==0)//关夜晚蜂鸣器警报
+								{
+									LCD_DisplayChinese_one(205,264,25,24);
+									beep_status=0;
+									AT24CXX_Write(2,&beep_status,1);
+								}
+								else if(strcmp(data_fromserver,"update_on")==0)//获取最新数据
+								{
+									get_all_status_data(data_buff);
+									SENDstr_to_server(data_buff);
+									printf("update_on successful\n");
 								}
 								
 								//##################
@@ -276,8 +336,7 @@ void EXTI9_5_IRQHandler(void)
 		if(key3==0)	 
 		{
 			//front_rotate();
-			
-		  printf("\nkey3 test by interrupt\n");
+		  printf("key3 test by interrupt\n");
 		}		
 		//清楚中断标志位，否则会一直进入中断函数
 		EXTI_ClearITPendingBit(EXTI_Line6);
@@ -292,8 +351,6 @@ void EXTI9_5_IRQHandler(void)
 			
 			//area_rotate();
 			
-			//data_buff[18]='1';
-			//SENDstr_to_server((char *)data_buff);
 			printf("\nkey2 test by interrupt\n");
 		}		
 		//清楚中断标志位，否则会一直进入中断函数
@@ -309,8 +366,6 @@ void EXTI9_5_IRQHandler(void)
 			
 			//stop_rotate();
 			
-			//data_buff[18]='0';
-			//SENDstr_to_server((char *)data_buff);
 			printf("\nkey1 test by interrupt\n");
 		}		
 		//清楚中断标志位，否则会一直进入中断函数
@@ -395,7 +450,7 @@ void EXTI9_5_IRQHandler(void)
 //	
 //*/
 
-u8 curtain_status;//0:窗帘关闭
+
 
 //获取dht11 光敏、
 void get_all_status_data(char *data_buff)
@@ -411,7 +466,7 @@ void get_all_status_data(char *data_buff)
 	u8 beep_flag=3;
 	u8 time_temp=3;
 	
-	//没有接传感器，或者没有调用对应的初始化函数会导致出错
+	//没有接传感器，或者没有调用对应的初始化函数会导致出错，使得tlink，那边卡住，然后重启
 	
 	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
 	//light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
@@ -430,7 +485,7 @@ void get_all_status_data(char *data_buff)
 	data_buff[7]=(light_streng/10)+48;
 	data_buff[8]=(light_streng%10)+48;
 	
-	//光照阈值
+	//光照阈值----------后面再进行优化，先实现功能
 	AT24CXX_Read(1,&light_limit,1);
 	switch(light_limit)
 	{
@@ -508,8 +563,6 @@ void get_all_status_data(char *data_buff)
 //       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
 // */
 
-//void LCD_showtime_RTC(void);
-
 extern u8 Zero_to_six_clock;
 void LCD_showdate(void)
 {
@@ -575,7 +628,6 @@ extern const u8 gImage_set_time[]; //设置定时
 extern const u8 gImage_smart_mode[];
 extern const u8 gImage_hand_mode[];
 
-
 /*
 	功能：定时窗帘的开或者关---注意：把提示换成中文的
 
@@ -612,7 +664,6 @@ void Time_has_set()//显示定时的时间
  LCD_DisplayNum(106,81,RTC_TimeStruct.RTC_Minutes,2,24,1);
  LCD_DisplayNum(142,81,RTC_TimeStruct.RTC_Seconds,2,24,1);
 }
-
 
 void ADJUST_time(u8 option,u8 shanshuo)
 {
@@ -908,7 +959,7 @@ void SET_time(void)
 			set_curtain_status=3;
 			//在添加上把at24c02里边的值清理干净
 			AT24CXX_Write(4,(u8*)&set_curtain_status,1);
-			has_set_time_online=0;
+			has_set_time_online=0;//是否设置了定时，让rtc的秒中断实时去处理
 		}
 		
 		
@@ -1054,19 +1105,19 @@ void beepalarm_in_night(void)
 	if(haspeople==1)
 	{
 		//BEEP=1;
-		printf("people is coming\n");
+		//printf("people is coming\n");
 	}
 	else
 	{
 		//BEEP=0;
-		printf("no people \n");
+		//printf("no people \n");
 	}
 }
 //-*****************************************//
 
 
 
-
+//尽量最终程序减少不必要的打印
 
 int main()
 {
@@ -1079,7 +1130,7 @@ int main()
 		在变量后边，对所赋值进行说明
 	*/
 	u8 status;
-	u8 beep_status=0;//1:开启 0：关闭
+
 	u8 system_mode=0;//1:智能 0：手动
 	int chinese_mode[3]={11,12,-1};//模式的名字:智能
 	u8 light_status=0;//1:弱 2：中 3：强
@@ -1129,7 +1180,7 @@ int main()
 	printf("start \n");
 	
 
-	//先对24C02存储的值进行判断，先初始化一下
+	//先对24C02存储的值进行判断，先初始化一下，可以进行优化一下
 
 	//光照阈值
 	AT24CXX_Read(1,&status,1);
