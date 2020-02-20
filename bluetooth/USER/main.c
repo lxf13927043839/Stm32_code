@@ -38,26 +38,24 @@ void LCD_DisplayString(u16 x,u16 y,u8 size,u8 *p); //显示一个12/16/24字体字符串
 
 
 //---------------------ESP8266--115200--------------------------------------
-void front_rotate(void);
-void area_rotate(void);
-void stop_rotate(void);
+//void front_rotate(void);
+//void area_rotate(void);
+//void stop_rotate(void);
 
-void get_sensor_data(char *data_buff);
+//void get_all_status_data(char *data_buff);
 /*
-		data_buff={#11,22,33,44,55,1,0#};
-		温度、湿度、光照(tlink能怎么设计)、光照阈值(待确定)、窗帘状态、系统模式、人体红外、是否更新数据
-		12    45   7 9    11  13 
+		功能：与tlink对接的数据协议
+		
+		温度、湿度、光照、光照阈值、窗帘状态、智能模式开关，窗帘开关，夜晚蜂鸣器警报，窗帘定时功能，获取最新数据
+		 12----45----78-----10 11-----13----------15-----------17-----------19------------21-------------23 
 */
-
-#define SIZE_of_DATA 22
-unsigned char data_buff[SIZE_of_DATA]={"#11,22,3.2,4.0,55,1,0#"};
-
-//char Weekday[][15]={{"Monday"},{"Tuesday"},{"Wednesday"},{"Thursday"},{"Friday"},{"Saturday"},{"Sunday"}}; 
-                 
+#define SIZE_of_DATA 26
+unsigned char data_buff[SIZE_of_DATA]="#11,22,33,44,0,0,0,0,0,0#";
+            
 
 #define SIZE_from_SEVRVER 50
-char data_fromserver[SIZE_from_SEVRVER];
-int num_from_server=0;
+char data_fromserver[SIZE_from_SEVRVER];//接收服务器的字符串控制指令
+int num_from_server=0; //接收字符数 序号
 int link_success=0; //初始化esp8266模块时，看指令是否成功执行
 int link_flag=0; //在连接过程中检测心跳包，在tim4中断函数中控制看门狗，
 
@@ -92,6 +90,8 @@ void UART4_IRQHandler(void)
 				TIM3->CNT=0;
 				
 				link_flag=1;//连接成功
+				
+				
 			}
 		}else if(link_success==1)  //对tlink下行控制指令、以及心跳包的处理
 		{
@@ -122,6 +122,7 @@ void UART4_IRQHandler(void)
 										{
 											first_ok_flag=1;
 											TIM2_init(14*10000-1,8400-1);//重新定时器TIM2-----14秒，跟心跳包同
+											//printf("first ok is come\n");
 										}
 										else
 										{
@@ -147,11 +148,11 @@ void UART4_IRQHandler(void)
 								if(strcmp(data_fromserver,"hello")==0)
 								{
 									printf("the order has received\n");
-									front_rotate();
+									//front_rotate();
 								}
 								else if(strcmp(data_fromserver,"world")==0)
 								{
-									stop_rotate();
+									//stop_rotate();
 								}
 								
 								//##################
@@ -166,10 +167,10 @@ void UART4_IRQHandler(void)
 				
 			}
 		}
-	//	{"sensorsId":200327142,"switcher":1}
-		USART_ClearITPendingBit(UART4, USART_IT_RXNE); 
+		
+		USART_ClearITPendingBit(UART4, USART_IT_RXNE); //清除UART4的接收中断	
 	}
-		//清除UART4的接收中断	
+
 } 
 
 
@@ -186,9 +187,9 @@ void UART4_IRQHandler(void)
 
 */
 
-int opendog_flag=-1;
+int opendog_flag=-1;//用来计数10s后打开看门狗，一开始初始化定时器，会自动进一次中断----无解
 int initdog=0;
-int five_second_send_flag=0;
+int ten_second_send_flag=0;//十秒定时上传数据
 /*
 	在配置esp8266以及连接服务器，配置是5秒
 	在连接成功的时候，更改为1秒，用来定时上传数据 
@@ -209,14 +210,15 @@ void TIM3_IRQHandler(void)
 			opendog_flag=0;
 			//printf("dog successful \n");
 		}
-		if(link_flag==1) //定时5秒上传数据
+		if(link_flag==1) //定时10秒上传数据
 		{
-			five_second_send_flag++;
-			if(five_second_send_flag==10)
+			ten_second_send_flag++;
+			if(ten_second_send_flag==10)
 			{
-				five_second_send_flag=0;
-				get_sensor_data((char *)data_buff);
-				SENDstr_to_server((char *)data_buff);
+				ten_second_send_flag=0;
+				//get_all_status_data((char *)data_buff);
+				//printf("ten second send \n");
+				//SENDstr_to_server((char *)data_buff);
 			}
 			
 		}
@@ -235,21 +237,29 @@ void TIM2_IRQHandler(void)
 			}
 			else
 			{
+					printf("检测失败 启动看门狗\n");
 					SENDstr_to_server("+++");	
 					link_flag=0;//不进行喂狗操作
-					printf("检测失败 启动看门狗\n");
+					
 			}
 
 	}
 	TIM_ClearITPendingBit(TIM2,TIM_IT_Update); //清除中断标志位
 }
 
+/*
+	功能：当出现 > 符号即连接成功，TIM4一直是在喂狗
+				看门狗是5秒-----TIM4是4秒，因为看门狗开启后无法关闭，所有必须喂狗
+*/
 void TIM4_IRQHandler(void)
 {
 	if(TIM_GetITStatus(TIM4,TIM_IT_Update)==SET) //溢出中断
 	{	
 		if(link_flag==1)	
-		feed_dog();
+		{
+			feed_dog();
+			//printf("in TIM4 feeddog\n");
+		}
 	}
 	TIM_ClearITPendingBit(TIM4,TIM_IT_Update); //清除中断标志位
 }
@@ -265,7 +275,7 @@ void EXTI9_5_IRQHandler(void)
 		delay_ms(10);	//去抖动
 		if(key3==0)	 
 		{
-			front_rotate();
+			//front_rotate();
 			
 		  printf("\nkey3 test by interrupt\n");
 		}		
@@ -280,7 +290,7 @@ void EXTI9_5_IRQHandler(void)
 		if(key2==0)	 
 		{
 			
-			area_rotate();
+			//area_rotate();
 			
 			//data_buff[18]='1';
 			//SENDstr_to_server((char *)data_buff);
@@ -297,7 +307,7 @@ void EXTI9_5_IRQHandler(void)
 		if(key1==0)	 
 		{	
 			
-			stop_rotate();
+			//stop_rotate();
 			
 			//data_buff[18]='0';
 			//SENDstr_to_server((char *)data_buff);
@@ -309,109 +319,105 @@ void EXTI9_5_IRQHandler(void)
 	
 }
 
-//-----------电机控制初始化---------
+////-----------电机控制初始化---------
 
-#define ENA PBout(10)	
-#define IN1 PBout(11)	// D1	 
-#define IN2 PCout(6)	// D1	 
-void ELECTRI_motor_init(void)
-{
-	GPIO_InitTypeDef GPIO_InitStructure;
-	
-	//开启GPIO时钟
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
-	//初始化IO
+//#define ENA PBout(10)	
+//#define IN1 PBout(11)	// D1	 
+//#define IN2 PCout(6)	// D1	 
+//void ELECTRI_motor_init(void)
+//{
+//	GPIO_InitTypeDef GPIO_InitStructure;
+//	
+//	//开启GPIO时钟
+//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
+//	//初始化IO
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11; //GPIOB11  GPIOB10
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//输出
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
-	GPIO_Init(GPIOB,&GPIO_InitStructure); //PB10, PB11
-	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //GPIOC6
-	GPIO_Init(GPIOC,&GPIO_InitStructure); //PC6
-	
-	GPIO_ResetBits(GPIOC,GPIO_Pin_6);
-	GPIO_ResetBits(GPIOB,GPIO_Pin_10 | GPIO_Pin_11);
-}
+//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11; //GPIOB11  GPIOB10
+//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//输出
+//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
+//	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
+//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
+//	GPIO_Init(GPIOB,&GPIO_InitStructure); //PB10, PB11
+//	
+//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //GPIOC6
+//	GPIO_Init(GPIOC,&GPIO_InitStructure); //PC6
+//	
+//	GPIO_ResetBits(GPIOC,GPIO_Pin_6);
+//	GPIO_ResetBits(GPIOB,GPIO_Pin_10 | GPIO_Pin_11);
+//}
 
-void front_rotate(void)
-{
-	ENA=1;
-	IN1=1;
-	IN2=0;
-}
-void area_rotate(void)
-{
-	ENA=1;
-	IN1=0;
-	IN2=1;
-}
-void stop_rotate(void)
-{
-	ENA=1;
-	IN1=0;
-	IN2=0;
-}
+//void front_rotate(void)
+//{
+//	ENA=1;
+//	IN1=1;
+//	IN2=0;
+//}
+//void area_rotate(void)
+//{
+//	ENA=1;
+//	IN1=0;
+//	IN2=1;
+//}
+//void stop_rotate(void)
+//{
+//	ENA=1;
+//	IN1=0;
+//	IN2=0;
+//}
 
-//初始化dht11 光敏、RTC
-void ALL_SENSOR_init(void)
-{
-	//****************************************//
-  //如果没有dht11 灯会闪烁
-	while(DHT11_init())
-	{
-		LED1=!LED1;
-	}
-	//光敏
-	ADC_init();      
-	//RTC
-	My_RTC_init();
-	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
-	//所有给0 会产生1S
-	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
-	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP
-	
-	ELECTRI_motor_init();
-	
-	People_init();
-	
+////初始化dht11 光敏、RTC
+//void ALL_SENSOR_init(void)
+//{
+//	//****************************************//
+//  //如果没有dht11 灯会闪烁
+//	while(DHT11_init())
+//	{
+//		LED1=!LED1;
+//	}
+//	//光敏
+//	ADC_init();      
+//	//RTC
+//	My_RTC_init();
+//	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
+//	//所有给0 会产生1S
+//	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
+//	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP
+//	
+//	ELECTRI_motor_init();
+//	
+//	People_init();
+//	
+//}
 
-	
-}
-//获取dht11 光敏、RTC数据
-void get_sensor_data(char *data_buff)
+///*
+//	功能：获取各个传感器数据，以及控制状态值
+//	
+//*/
+
+u8 curtain_status;//0:窗帘关闭
+
+//获取dht11 光敏、
+void get_all_status_data(char *data_buff)
 {
-	u8 temperature;//温度
-  u8 humidity;   //湿度
-	u16 adcx=0;			 //adc读取值
-	float light_streng=0;
-	RTC_TimeTypeDef RTC_TimeStruct;//时间
-	RTC_DateTypeDef RTC_DateStruct;//日期
+	u8 temperature=0;//温度
+  u8 humidity=0;   //湿度
+	u16 adcx=0;		 //adc读取值  12位精度adc  2^12=4096
+	int light_streng=0;
+	u8 light_limit=0;//光照阈值
+
 	u8 rtc_buf[40];
+	u8 mode_of_system=5;//系统控制的模式
+	u8 beep_flag=3;
+	u8 time_temp=3;
 	
-	RTC_GetDate(RTC_Format_BIN, &RTC_DateStruct);
-	sprintf((char*)rtc_buf,"Date:20%02d-%02d-%02d",RTC_DateStruct.RTC_Year,
-	RTC_DateStruct.RTC_Month,RTC_DateStruct.RTC_Date);
-	//printf("%s\n",rtc_buf);
-
+	//没有接传感器，或者没有调用对应的初始化函数会导致出错
 	
-	sprintf((char*)rtc_buf,"Week:%d",RTC_DateStruct.RTC_WeekDay);
-	//printf("%s\n",rtc_buf);
+	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	//light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
+	//printf("光敏:light_streng = %d\n",light_streng);
 	
-	
-	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
-	sprintf((char*)rtc_buf,"Time:%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,
-	RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
-	//printf("%s\n",rtc_buf);
-	
-	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	light_streng=(float)adcx*(3.3/4096);          //获取计算后的带小数的实际电压值，比如3.1111
-	//printf("光敏:light_streng = %f\n",light_streng);
-	
-	DHT11_Read_Data(&temperature,&humidity);
+	//DHT11_Read_Data(&temperature,&humidity);
 	//printf("温度temperature = %d \n",temperature);
 	//printf("湿度humidity    = %d \n",humidity);
 	
@@ -421,29 +427,97 @@ void get_sensor_data(char *data_buff)
 	data_buff[4]=(humidity/10)+48;
 	data_buff[5]=(humidity%10)+48;
 	
-	data_buff[7]=((int)(light_streng*10)/10)+48;
-	data_buff[9]=((int)(light_streng*10)%10)+48;
+	data_buff[7]=(light_streng/10)+48;
+	data_buff[8]=(light_streng%10)+48;
+	
+	//光照阈值
+	AT24CXX_Read(1,&light_limit,1);
+	switch(light_limit)
+	{
+		case 1:
+						data_buff[10]=4+48;
+						data_buff[11]=0+48;
+						break;
+		case 2:
+						data_buff[10]=6+48;
+						data_buff[11]=0+48;
+						break;
+			break;
+		case 3:
+						data_buff[10]=9+48;
+						data_buff[11]=0+48;
+						break;
+			break;
+	}
+	
+	//窗帘的状态----窗帘开关------是统一的
+	if(curtain_status==1)
+	{
+		data_buff[13]=1+48;
+		data_buff[17]=1+48;
+	}
+	else if(curtain_status==0)
+	{
+		data_buff[13]=0+48;
+		data_buff[17]=0+48;
+	}
+	
+	//智能模式开关
+	AT24CXX_Read(3,&mode_of_system,1);
+	if(mode_of_system==1)
+	{
+		data_buff[15]=1+48;
+	}
+	else
+	{
+		data_buff[15]=0+48;
+	}
+	
+	//蜂鸣器警报
+	AT24CXX_Read(2,&beep_flag,1);
+	if(beep_flag==1)
+	{
+		data_buff[19]=1+48;
+	}
+	else
+	{
+		data_buff[19]=0+48;
+	}
+	//窗帘定时功能
+	AT24CXX_Read(4,&time_temp,1);
+	if(time_temp==1||time_temp==0)
+	{
+		data_buff[21]=1+48;
+	}
+	else
+	{
+		data_buff[21]=0+48;
+	}
+	
+	data_buff[23]=0+48;
+	//		温度、湿度、光照、光照阈值、窗帘状态、智能模式开关，窗帘开关，夜晚蜂鸣器警报，窗帘定时功能，获取最新数据
+	//	 12----45----78-----10 11-----13----------15-----------17-----------19------------21-------------23 
 	
 	printf("所采集的数据data = %s \n",data_buff);
 }
 
- /*------------------------------------------------------------------- 
-	1、汉字大小：24*24共 72字节
-  2、显示汉字时调用对应序号：
-	温(0) 湿(1) 度(2) 光(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
-       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
- */
+// /*------------------------------------------------------------------- 
+//	1、汉字大小：24*24共 72字节
+//  2、显示汉字时调用对应序号：
+//	温(0) 湿(1) 度(2) 光(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
+//       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
+// */
 
-void LCD_showtime_RTC(void);
+//void LCD_showtime_RTC(void);
 
 extern u8 Zero_to_six_clock;
 void LCD_showdate(void)
 {
 	int x=0,y=0;
+	int level;
 	u8 temp[2];
 	RTC_DateTypeDef RTC_DateStruct;
 	u8 temp_buff[40]; 
-	
 	
 	BRUSH_COLOR=RED;      //设置画笔颜色为黑色
 	//温度
@@ -459,13 +533,29 @@ void LCD_showdate(void)
 	temp[1]=data_buff[5];
 	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
 	LCD_DisplayChinese_one(x+12*2,y,20,24);
-	
+
 	//光照强度----采用弱、中、强来表示，数字意义不大
 	x=95;y=113;
 	temp[0]=data_buff[7];
-	temp[1]=data_buff[9];
+	temp[1]=data_buff[8];
 	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
-	
+	LCD_DisplayChinese_one(x+12*2,y,20,24);
+	LCD_DisplayChar(x+12*2+24*1,y,'(',24);
+	level=(temp[0]-48)*10+(temp[1]-48);
+	if(level>=0&&level<=40)
+	{
+		LCD_DisplayChinese_one(x+12*2+24*2-12,y,21,24);
+	}
+	else if(level>40&&level<=70)
+	{
+		LCD_DisplayChinese_one(x+12*2+24*2-12,y,22,24);
+	}
+	else if(level>70&&level<=100)
+	{
+		LCD_DisplayChinese_one(x+12*2+24*2-12,y,23,24);
+	}
+	LCD_DisplayChar(x+12*2+24*3-12,y,')',24);
+		
 	//显示日期
 	x=5;y=295;
 	RTC_GetDate(RTC_Format_BIN, &RTC_DateStruct);
@@ -474,32 +564,17 @@ void LCD_showdate(void)
 	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
 	
 	//显示时间测试位置,显示ok---该函数放在秒的唤醒服务函数
-	//LCD_show_RTC();
 	
-	/*	
-	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
-	//所有给0 会产生1S
-	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
-	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
-
-
-	//显示光照阈值
-	y=24*6;
-	LCD_DisplayChinese_string(x,y,24,chinese3);
-	LCD_DisplayChar(x+24*4,y,':',24);//宽度只有8
-	LCD_DisplayChinese_one(x+24*5,y,23,24);
-	*/
 }
 
 
-//跳转到设置光照阈值的界面
+////跳转到设置光照阈值的界面
 
 extern const u8 gImage_set_light[];//设置光照阈值界面
 extern const u8 gImage_set_time[]; //设置定时
 extern const u8 gImage_smart_mode[];
 extern const u8 gImage_hand_mode[];
 
-u8 curtain_status;//0:窗帘关闭
 
 /*
 	功能：定时窗帘的开或者关---注意：把提示换成中文的
@@ -511,7 +586,6 @@ u8 curtain_status;//0:窗帘关闭
             按KEY2右移选择要设置的选项，在调整完后短按KEY3，确认调整时间         
 *********************************************************************************/
 
-//u8 const *weekdate[7]={"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"};
 u8 const *set_option[7]={"Year","Month","Day","Hours","Minutes","Seconds"," "};
 
 void Time_Display()//把变化的时间写入
@@ -747,28 +821,12 @@ void SET_time(void)
 	u8 time_buff[40]={0};//存放定时的时间,没有初始化会出现一些意外的bug，如出现一斜杆
 	u8 date_buff[40];//存放定时的日期
 	u8 test[40];//从24c02 读取数据测试
-	u8 curtain_status=3;//窗帘状态,只有0/1 状态是有效的，其他数字是无效的
+	u8 curtain_status_insettime=3;//窗帘状态,只有0/1 状态是有效的，其他数字是无效的
 	short set_tim_success=-1; //时间的设置是正常的 
 	u8 had_settimeflag=3; //检测是否有设置了
 	u8 temp;
-	u8 set_curtain_status;//
-	/*
-	char temp[]="20200215";
-	char temp1[]="20200315";
+	u8 set_curtain_status;//定时设置窗帘的开关，不是直接反应窗帘状态
 	
-	ret=Judge_correct_time(temp1,temp);
-	printf("ret = %d\n",ret);
-	*/ 
-	
-	/*
-	//NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
-	//Systick_init(168);         //初始化延时函数
-	//UART1_init(115200);
-	
-	//LED_init();					  //初始化LED
- 	//LCD_init();					  //初始化LCD
-	//KEY_init();           //初始化KEY
-  */
 	BRUSH_COLOR=RED;
 	
 	//待删除部分
@@ -784,9 +842,7 @@ void SET_time(void)
 	RTC_GetTimes(RTC_Format_BIN);//获得系统的时间
 	Time_Display(); //在底下进行的动态显示
 	
-
 	//显示界面
-	
 	image_display(0,0,(u8*)gImage_set_time);
 	
 	//判断之前是否有设置了定时
@@ -833,14 +889,14 @@ void SET_time(void)
 		{
 			delay_ms(200);
 			LCD_DisplayChinese_one(110,108,24,24);
-			curtain_status=1;
+			curtain_status_insettime=1;
 		}
 		//关
 		if(Xdown>154&&Xdown<210&&Ydown>145&&Ydown<183)
 		{
 			delay_ms(200);
 			LCD_DisplayChinese_one(110,108,25,24);
-			curtain_status=0;
+			curtain_status_insettime=0;
 		}
 		//关闭/取消定时
 		if(Xdown>197&&Xdown<240&&Ydown>0&&Ydown<43)
@@ -936,9 +992,9 @@ void SET_time(void)
 						 //设置的定时没有问题，再确认有选择窗帘开关，写入at24c02，时间比窗帘的开关更有必要
 						 if(set_tim_success==1)
 						 {
-							 if(curtain_status!=3)
+							 if(curtain_status_insettime!=3)
 							 {
-									printf("set and choose ok，curtain_status= %d \n",curtain_status);
+									printf("set and choose ok，curtain_status= %d \n",curtain_status_insettime);
 									LCD_DisplayString_color(30,280,24,"Adjust TIM OK          ",BLUE,WHITE);
 									//for(j=0;j<100;j++) delay_ms(10);  // Adjust OK 调整OK显示1秒
 									//LCD_DisplayString(30,280,24,"                        ");
@@ -950,7 +1006,7 @@ void SET_time(void)
 									//AT24CXX_Read(0,test,strlen(date_buff));
 									//printf("test = %s\n",test);
 								 */
-									AT24CXX_Write(4,(u8*)&curtain_status,1);
+									AT24CXX_Write(4,(u8*)&curtain_status_insettime,1);
 									//delay_ms(100);
 								  //AT24CXX_Read(4,&temp,1);
 									//printf("temp = %d \n",temp);
@@ -1009,6 +1065,9 @@ void beepalarm_in_night(void)
 //-*****************************************//
 
 
+
+
+
 int main()
 {
 	int only_test=0;
@@ -1046,28 +1105,30 @@ int main()
   	LED0=!LED0;
 	}
 	
-	
-	//TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
-	//ESP8266_UART4_init(115200);
-	//WIFI_Server_Init();
-	
-	//ALL_SENSOR_init();
-	LCD_init();  //初始化LCD FSMC接口和显示驱动
+	People_init();
 	
 	
-	Touch_Init();				//触摸屏的初始化
-	
-	printf("start \n");
 	
 	My_RTC_init();
+	
 	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
 	//所有给0 会产生1S
 	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
 	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP 
 	
-	//R_Touch_test(); //函数中间有一个循环检测触摸屏
+	
+	TIM3_init(5*10000-1,8400-1);//定时器5秒检测开看门狗
+	ESP8266_UART4_init(115200);
+	WIFI_Server_Init();
+	
+	//ALL_SENSOR_init();
+	LCD_init();  //初始化LCD FSMC接口和显示驱动
+	
+	Touch_Init();				//触摸屏的初始化
+	
+	printf("start \n");
+	
 
-	People_init();
 	//先对24C02存储的值进行判断，先初始化一下
 
 	//光照阈值
@@ -1298,6 +1359,9 @@ int main()
 						curtain_status=1;
 						//add 马上发送消息到服务器上，不要切太快
 						
+						get_all_status_data(data_buff);
+						SENDstr_to_server(data_buff);
+						
 						
 						//printf("on \n");
 					}
@@ -1310,6 +1374,10 @@ int main()
 						
 						curtain_status=0;
 						//add 马上发送消息到服务器上，不要切太快
+						get_all_status_data(data_buff);
+						SENDstr_to_server(data_buff);
+						
+						
 						
 						//printf("off \n");
 					}
@@ -1353,3 +1421,4 @@ int main()
 	}
 
 }
+

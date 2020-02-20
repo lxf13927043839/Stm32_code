@@ -150,6 +150,10 @@ void RTC_Alarm_IRQHandler(void)
 	一秒执行一次，用来在00：00-06：00夜晚蜂鸣器警报
 */
 u8 Zero_to_six_clock=0;//1代表0-6时刻来临，0：未来到
+
+//记得解开注释，调试wifi的时候注释了
+
+
 extern u8 enter_set_time;
 
 extern u8 has_set_time_online;
