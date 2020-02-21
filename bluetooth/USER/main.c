@@ -24,6 +24,12 @@
 
 //还没有添加定时上传服务器功能
 
+int label;//用来窗帘模式远程控制，标签
+int label_closetime;//远程关闭定时设置界面
+
+
+u8 enter_set_time=0;//进入设置定时界面
+
 u8 has_set_time_online=0;
 u8 set_time_buff[18];
 //---------------------------------------------------------------------------
@@ -50,11 +56,11 @@ void get_all_status_data(char *data_buff);
 /*
 		功能：与tlink对接的数据协议
 		
-		温度、湿度、光照、光照阈值、窗帘状态、智能模式开关，窗帘开关，夜晚蜂鸣器警报，窗帘定时功能，获取最新数据
-		 12----45----78-----10 11-----13----------15-----------17-----------19------------21-------------23 
+		温度、湿度、光照、光照阈值、窗帘状态、智能模式开关，窗帘开关，夜晚蜂鸣器警报，窗帘定时功能，获取最新数据    夜晚蜂鸣器警报
+		 12----45----78-----10 11-----13----------15-----------17-----------19------------21-------------23 ---------25----------------
 */
-#define SIZE_of_DATA 26
-unsigned char data_buff[SIZE_of_DATA]="#11,22,33,44,0,0,0,0,0,0#";
+#define SIZE_of_DATA 28
+unsigned char data_buff[SIZE_of_DATA]="#11,22,33,44,0,0,0,0,0,0,0#";
             
 
 #define SIZE_from_SEVRVER 50
@@ -182,18 +188,36 @@ void UART4_IRQHandler(void)
 									
 								}else if(strcmp(data_fromserver,"smart_on")==0)//开智能模式
 								{
+									//先判断现在是处于什么模式，如果是手动模式在执行
+									AT24CXX_Read(3,(u8 *)&temp,1);
+									if(temp==0)
+									{
+										label=1;
+									}
 									
 								}
 								else if(strcmp(data_fromserver,"smart_off")==0)//关智能模式
 								{
+									AT24CXX_Read(3,(u8 *)&temp,1);
+									if(temp==1)
+									{
+										label=1;
+									}
 									
 								}
 								else if(strcmp(data_fromserver,"setti_on ")==0)//设置定时开
 								{
-									
+									//开不了啥都不用做，空着
 								}
 								else if(strcmp(data_fromserver,"setti_off")==0)//设置定时关
 								{
+									temp=4;
+									AT24CXX_Write(4,(u8*)&temp,1);
+									
+									if(enter_set_time==1)
+									{
+										label_closetime=1;
+									}
 									
 								}
 								else if(strcmp(data_fromserver,"alarm_on")==0)//开夜晚蜂鸣器警报
@@ -857,7 +881,7 @@ void ADJUST_time(u8 option,u8 shanshuo)
 	}
 }	
 
-u8 enter_set_time=0;
+
 void SET_time(void)
 {
 	//注：有一些函数是初始化过了的，整合时候要删除
@@ -927,6 +951,11 @@ void SET_time(void)
 		//add
 		XPT2046_Scan(0);
 		
+		if(label_closetime==1)
+		{
+			goto close;
+		}
+		
 		//返回
 		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
 		{
@@ -953,7 +982,8 @@ void SET_time(void)
 		if(Xdown>197&&Xdown<240&&Ydown>0&&Ydown<43)
 		{
 			delay_ms(200);
-			
+close:			
+			label_closetime=0;
 			image_display(0,0,(u8*)gImage_set_time);
 			process=0;
 			set_curtain_status=3;
@@ -1106,11 +1136,14 @@ void beepalarm_in_night(void)
 	{
 		//BEEP=1;
 		//printf("people is coming\n");
+		
+		data_buff[25]=1;
 	}
 	else
 	{
 		//BEEP=0;
 		//printf("no people \n");
+		data_buff[25]=0;
 	}
 }
 //-*****************************************//
@@ -1314,10 +1347,18 @@ int main()
 						AT24CXX_Write(1,&light_status,1);
 					}
 					
+					if(label==1)
+					{
+						goto smart_mode;
+					}
+					
 					//切换模式
 					if(Xdown>5&&Xdown<45&&Ydown>206&&Ydown<246)
 					{
+						
 						delay_ms(200);
+smart_mode:
+						label=0;
 						status=0;
 						
 						system_mode=0;
@@ -1347,6 +1388,10 @@ int main()
 					if(Zero_to_six_clock==1&&beep_status==1)
 					{
 						beepalarm_in_night();
+					}
+					else
+					{
+						data_buff[25]=0;
 					}
 					
 				}
@@ -1388,13 +1433,19 @@ int main()
 				while(1)
 				{
 					XPT2046_Scan(0);
-					
+					if(label==1)
+					{
+						goto hand_mode;
+					}
 					//切换模式
 					if(Xdown>0&&Xdown<40&&Ydown>168&&Ydown<208)
 					{
+
 						delay_ms(300);
+hand_mode:
+						label=0;
 						status=1;
-						
+					
 						system_mode=1;
 						AT24CXX_Write(3,&system_mode,1);
 						//printf("switch \n");
