@@ -1134,16 +1134,20 @@ void beepalarm_in_night(void)
 	haspeople=People_scan();
 	if(haspeople==1)
 	{
-		//BEEP=1;
-		//printf("people is coming\n");
 		
-		data_buff[25]=1;
+		if(beep_status==1)
+		{
+			//BEEP=1;
+		  printf("beep is ringing\n");
+		}
+		
+		data_buff[25]=5+48;
 	}
 	else
 	{
 		//BEEP=0;
 		//printf("no people \n");
-		data_buff[25]=0;
+		data_buff[25]=0+48;
 	}
 }
 //-*****************************************//
@@ -1223,11 +1227,11 @@ int main()
 		AT24CXX_Write(1,&status,1);
 	}
 	//Ò¹Íí·äÃùÆ÷
-	AT24CXX_Read(2,&status,1);
-	if(status!=0&&status!=1)
+	AT24CXX_Read(2,&beep_status,1);
+	if(beep_status!=0&&beep_status!=1)
 	{
-		status=0;
-		AT24CXX_Write(2,&status,1);
+		beep_status=0;
+		AT24CXX_Write(2,&beep_status,1);
 	}
 	//Ä£Ê½
 	AT24CXX_Read(3,&status,1);
@@ -1385,13 +1389,13 @@ smart_mode:
 						}
 						printf("·äÃùÆ÷\n");
 					}
-					if(Zero_to_six_clock==1&&beep_status==1)
-					{
+					if(Zero_to_six_clock==1)
+		 			{
 						beepalarm_in_night();
 					}
 					else
 					{
-						data_buff[25]=0;
+						data_buff[25]=0+48;
 					}
 					
 				}
@@ -1513,10 +1517,14 @@ hand_mode:
 						}
 						//printf("·äÃùÆ÷\n");
 					}
-					if(Zero_to_six_clock==1&&beep_status==1)
+					if(Zero_to_six_clock==1)
 					{
 						beepalarm_in_night();
 					}
+					else
+					{
+						data_buff[25]=0+48;
+					}	
 				}
 				break;
 		}

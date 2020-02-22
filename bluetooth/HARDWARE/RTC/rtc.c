@@ -17,7 +17,7 @@ u8 My_RTC_init(void)
 	u16 retry=0X1FFF;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);// πƒ‹PWR ±÷”
 	PWR_BackupAccessCmd(ENABLE); // πƒ‹∫Û±∏ºƒ¥Ê∆˜∑√Œ 
-	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5020)// «∑Òµ⁄“ª¥Œ≈‰÷√°£ø
+	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5030)// «∑Òµ⁄“ª¥Œ≈‰÷√°£ø
 	{
 		RCC_LSEConfig(RCC_LSE_ON);//LSE ø™∆Ù
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) 
@@ -37,7 +37,7 @@ u8 My_RTC_init(void)
 		
 		//3.…Ë÷√ ±º‰
 		//RTC_TimeStruct.RTC_H12 =  
-		RTC_TimeStruct.RTC_Hours = 23;
+		RTC_TimeStruct.RTC_Hours = 4;
 		RTC_TimeStruct.RTC_Minutes = 58;
 		RTC_TimeStruct.RTC_Seconds = 50;
 		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
@@ -50,7 +50,7 @@ u8 My_RTC_init(void)
 		
 		RTC_SetDate(RTC_Format_BCD, &RTC_DateStruct);
 		
-		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5020);//±Íº«“—æ≠≥ı ºªØπ˝¡À
+		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5030);//±Íº«“—æ≠≥ı ºªØπ˝¡À
 	}
 	return 0;
 }
