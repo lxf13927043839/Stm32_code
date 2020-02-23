@@ -29,7 +29,7 @@ u8 light_streng_set=0;
 
 //还没有添加定时上传服务器功能
 
-int label;//用来窗帘模式远程控制，标签
+int label_mode;//用来窗帘模式远程控制，标签
 int label_closetime;//远程关闭定时设置界面
 
 void open_rotate(void);//电机转动打开窗帘
@@ -185,7 +185,6 @@ void UART4_IRQHandler(void)
 											printf(" open curtain from server\n");
 										}
 										
-										//printf("窗帘开测试\n");
 									}
 									
 									
@@ -204,6 +203,7 @@ void UART4_IRQHandler(void)
 											close_rotate();
 											printf("close curtain from server\n");
 										}
+								
 										//add 电机控制
 									}
 								
@@ -214,7 +214,7 @@ void UART4_IRQHandler(void)
 									AT24CXX_Read(3,(u8 *)&temp,1);
 									if(temp==0)
 									{
-										label=1;
+										label_mode=1;
 									}
 									
 								}
@@ -223,7 +223,7 @@ void UART4_IRQHandler(void)
 									AT24CXX_Read(3,(u8 *)&temp,1);
 									if(temp==1)
 									{
-										label=1;
+										label_mode=1;
 									}
 									
 								}
@@ -459,7 +459,7 @@ void open_rotate(void)//电机转动打开窗帘
 	//判断条件
 	
 	
-	printf("curtain open successfully\n");
+	printf("electrical motor open successfully\n");
 }
 void close_rotate(void)
 {
@@ -468,7 +468,7 @@ void close_rotate(void)
 	IN2=1;
 	//判断条件
 	
-	printf("curtain close successfully\n");
+	printf("electrical motor close successfully\n");
 }
 void stop_rotate(void)
 {
@@ -1201,6 +1201,7 @@ int main()
 	int only_test=0;
 	int people=0;
 	int i=0,cycle=0,T=2048;
+	int adcx;
 	/*
 		定义标志变量
 		初始值都是-1
@@ -1237,6 +1238,8 @@ int main()
 	
 	//光敏
 	ADC_init();   
+	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	light_streng_now=(4096-adcx)*100/4096;
 	
 	My_RTC_init();
 	
@@ -1257,7 +1260,7 @@ int main()
 	
 	printf("start \n");
 	
-
+ELECTRI_motor_init();
 	//先对24C02存储的值进行判断，先初始化一下，可以进行优化一下
 
 	//光照阈值
@@ -1392,7 +1395,7 @@ int main()
 						AT24CXX_Write(1,&light_status,1);
 					}
 					
-					if(label==1)
+					if(label_mode==1)
 					{
 						goto smart_mode;
 					}
@@ -1403,7 +1406,7 @@ int main()
 						
 						delay_ms(200);
 smart_mode:
-						label=0;
+						label_mode=0;
 						status=0;
 						
 						system_mode=0;
@@ -1446,7 +1449,7 @@ smart_mode:
 							close_rotate();
 							curtain_status=0;
 							LCD_DisplayChinese_one(135,185,25,24);
-							printf("curtain close\n");
+							printf("curtain close because light strength too high\n");
 						}
 					}
 					else	//当前光照不强，打开窗帘
@@ -1456,7 +1459,7 @@ smart_mode:
 							open_rotate();
 							curtain_status=1;
 							LCD_DisplayChinese_one(135,185,24,24);
-							printf("curtain open \n");
+							printf("curtain open beacause light weak\n");
 						}
 					}
 					
@@ -1503,7 +1506,7 @@ smart_mode:
 				while(1)
 				{
 					XPT2046_Scan(0);
-					if(label==1)
+					if(label_mode==1)
 					{
 						goto hand_mode;
 					}
@@ -1513,7 +1516,7 @@ smart_mode:
 
 						delay_ms(300);
 hand_mode:
-						label=0;
+						label_mode=0;
 						status=1;
 					
 						system_mode=1;
@@ -1536,6 +1539,8 @@ hand_mode:
 							SENDstr_to_server(data_buff);
 //=======================================================
 							open_rotate();
+							
+							printf("curtain open from hand mode\n");
 						}
 						
 						//printf("on \n");
@@ -1555,6 +1560,7 @@ hand_mode:
 							SENDstr_to_server(data_buff);
 //====================================================================	
 							close_rotate();
+							printf("curtain off by hand mode\n");
 						}
 						//printf("off \n");
 

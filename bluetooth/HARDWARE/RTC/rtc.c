@@ -151,13 +151,17 @@ void RTC_Alarm_IRQHandler(void)
 */
 u8 Zero_to_six_clock=0;//1代表0-6时刻来临，0：未来到
 
-//记得解开注释，调试wifi的时候注释了
+//记得解开注释，调试的时候注释了
+
+
 
 
 extern u8 enter_set_time;
 extern u8 curtain_status;//当前窗帘的状态
 extern u8 has_set_time_online;
 extern u8 set_time_buff[];
+extern u8 label_mode;//改变模式
+
 void open_rotate(void);//电机转动打开窗帘
 void close_rotate(void);
 
@@ -168,6 +172,7 @@ void LCD_showtime_RTC(void)
 	static char first=0;
 	u8 had_set;
 	u8 curtain_flag;
+	u8 mode_now;
 	//-------------------------------------------------------------------------------------
 	int x=0,y=0;
 	RTC_TimeTypeDef RTC_TimeStruct;
@@ -213,30 +218,36 @@ void LCD_showtime_RTC(void)
 		//printf("temp_buff = %s \n",temp_buff);
 		if(strcmp((char *)set_time_buff,(char *)temp_buff)==0)
 		{
+			AT24CXX_Read(3,&mode_now,1);
+			if(mode_now==1)//智能模式，切换
+			{
+				label_mode=1;
+				printf("system mode change by set time \n");
+			}	
+			
 			AT24CXX_Read(4,&curtain_flag,1);
 			if(curtain_flag==1)//定时的窗帘是开还是关 1 开 0 关
 			{
 				if(curtain_status==0)
 				{
-					printf("open operation in settime \n");
+					
 				//add open operation
 //=================================================================
 					open_rotate();
+					printf("curtain open from set time\n");
 					curtain_status=1;
 					LCD_DisplayChinese_one(140,143,24,24);
 					
-				}
-				
-				
+				}			
 			}
 			else if(curtain_flag==0)
 			{
 				if(curtain_status==1)
 				{
-					printf("close operation \n");
+				
 					//add close operation		
 //====================================================================
-					
+					printf("curtain close from set time\n");
 					close_rotate();
 					curtain_status=0;
 					LCD_DisplayChinese_one(140,143,25,24);
