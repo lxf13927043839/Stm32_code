@@ -155,9 +155,13 @@ u8 Zero_to_six_clock=0;//1代表0-6时刻来临，0：未来到
 
 
 extern u8 enter_set_time;
-
+extern u8 curtain_status;//当前窗帘的状态
 extern u8 has_set_time_online;
 extern u8 set_time_buff[];
+void open_rotate(void);//电机转动打开窗帘
+void close_rotate(void);
+
+
 
 void LCD_showtime_RTC(void)
 {
@@ -210,15 +214,33 @@ void LCD_showtime_RTC(void)
 		if(strcmp((char *)set_time_buff,(char *)temp_buff)==0)
 		{
 			AT24CXX_Read(4,&curtain_flag,1);
-			if(curtain_flag==1)
+			if(curtain_flag==1)//定时的窗帘是开还是关 1 开 0 关
 			{
-				printf("open operation \n");
+				if(curtain_status==0)
+				{
+					printf("open operation in settime \n");
 				//add open operation
+//=================================================================
+					open_rotate();
+					curtain_status=1;
+					LCD_DisplayChinese_one(140,143,24,24);
+					
+				}
+				
+				
 			}
 			else if(curtain_flag==0)
 			{
-				printf("close operation \n");
-				//add close operation
+				if(curtain_status==1)
+				{
+					printf("close operation \n");
+					//add close operation		
+//====================================================================
+					
+					close_rotate();
+					curtain_status=0;
+					LCD_DisplayChinese_one(140,143,25,24);
+				}				
 			}
 			curtain_flag=3;
 			AT24CXX_Write(4,&curtain_flag,1);

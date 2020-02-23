@@ -22,10 +22,19 @@
 #include "xpt2046.h"
 #include "image2lcd.h"
 
+//==========================================================
+u8 light_streng_now=0;
+u8 light_streng_set=0;
+//========================================================
+
 //还没有添加定时上传服务器功能
 
 int label;//用来窗帘模式远程控制，标签
 int label_closetime;//远程关闭定时设置界面
+
+void open_rotate(void);//电机转动打开窗帘
+void close_rotate(void);
+void LCD_showdate(void);//刷新lcd的数据界面，在TIM3的十秒到的时候
 
 
 u8 enter_set_time=0;//进入设置定时界面
@@ -154,7 +163,7 @@ void UART4_IRQHandler(void)
 								LED1=!LED1;
 								//对命令的处理
 								
-								printf("order from server = %s=%d",data_fromserver,strlen(data_fromserver));
+								printf("order from server = %s=%d \n",data_fromserver,strlen(data_fromserver));
 								
 								
 								
@@ -164,9 +173,17 @@ void UART4_IRQHandler(void)
 									
 									if(temp==0)
 									{
-										curtain_status=1;
-										LCD_DisplayChinese_one(140,143,24,24);
-										//add 电机控制
+								
+										if(curtain_status==0)
+										{
+											curtain_status=1;
+											LCD_DisplayChinese_one(140,143,24,24);
+//===========================================================================================											
+											//add 电机控制
+											open_rotate();
+											curtain_status=1;
+											printf(" open curtain from server\n");
+										}
 										
 										//printf("窗帘开测试\n");
 									}
@@ -178,10 +195,15 @@ void UART4_IRQHandler(void)
 								{
 									AT24CXX_Read(3,(u8 *)&temp,1);
 									if(temp==0)
-									{
-										curtain_status=0;
-										LCD_DisplayChinese_one(140,143,25,24);
-										
+									{	
+										if(curtain_status==1)
+										{
+											curtain_status=0;
+											LCD_DisplayChinese_one(140,143,25,24);
+//===========================================================================================
+											close_rotate();
+											printf("close curtain from server\n");
+										}
 										//add 电机控制
 									}
 								
@@ -300,9 +322,12 @@ void TIM3_IRQHandler(void)
 			if(ten_second_send_flag==10)
 			{
 				ten_second_send_flag=0;
-				//get_all_status_data((char *)data_buff);
+				get_all_status_data((char *)data_buff);
 				//printf("ten second send \n");
-				//SENDstr_to_server((char *)data_buff);
+				SENDstr_to_server((char *)data_buff);
+				//顺便刷新LCD的数据,在进入定时界面的时候不能去刷
+				if(enter_set_time==0)
+				LCD_showdate();
 			}
 			
 		}
@@ -400,50 +425,57 @@ void EXTI9_5_IRQHandler(void)
 
 ////-----------电机控制初始化---------
 
-//#define ENA PBout(10)	
-//#define IN1 PBout(11)	// D1	 
-//#define IN2 PCout(6)	// D1	 
-//void ELECTRI_motor_init(void)
-//{
-//	GPIO_InitTypeDef GPIO_InitStructure;
-//	
-//	//开启GPIO时钟
-//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
-//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
-//	//初始化IO
+#define ENA PBout(10)	
+#define IN1 PBout(11)	// D1	 
+#define IN2 PCout(6)	// D1	 
+void ELECTRI_motor_init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	//开启GPIO时钟
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
+	//初始化IO
 
-//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11; //GPIOB11  GPIOB10
-//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//输出
-//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
-//	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
-//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
-//	GPIO_Init(GPIOB,&GPIO_InitStructure); //PB10, PB11
-//	
-//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //GPIOC6
-//	GPIO_Init(GPIOC,&GPIO_InitStructure); //PC6
-//	
-//	GPIO_ResetBits(GPIOC,GPIO_Pin_6);
-//	GPIO_ResetBits(GPIOB,GPIO_Pin_10 | GPIO_Pin_11);
-//}
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11; //GPIOB11  GPIOB10
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//输出
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
+	GPIO_Init(GPIOB,&GPIO_InitStructure); //PB10, PB11
+	
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //GPIOC6
+	GPIO_Init(GPIOC,&GPIO_InitStructure); //PC6
+	
+	GPIO_ResetBits(GPIOC,GPIO_Pin_6);
+	GPIO_ResetBits(GPIOB,GPIO_Pin_10 | GPIO_Pin_11);
+}
 
-//void front_rotate(void)
-//{
-//	ENA=1;
-//	IN1=1;
-//	IN2=0;
-//}
-//void area_rotate(void)
-//{
-//	ENA=1;
-//	IN1=0;
-//	IN2=1;
-//}
-//void stop_rotate(void)
-//{
-//	ENA=1;
-//	IN1=0;
-//	IN2=0;
-//}
+void open_rotate(void)//电机转动打开窗帘
+{
+	ENA=1;
+	IN1=1;
+	IN2=0;
+	//判断条件
+	
+	
+	printf("curtain open successfully\n");
+}
+void close_rotate(void)
+{
+	ENA=1;
+	IN1=0;
+	IN2=1;
+	//判断条件
+	
+	printf("curtain close successfully\n");
+}
+void stop_rotate(void)
+{
+	ENA=1;
+	IN1=0;
+	IN2=0;
+}
 
 ////初始化dht11 光敏、RTC
 //void ALL_SENSOR_init(void)
@@ -454,8 +486,7 @@ void EXTI9_5_IRQHandler(void)
 //	{
 //		LED1=!LED1;
 //	}
-//	//光敏
-//	ADC_init();      
+   
 //	//RTC
 //	My_RTC_init();
 //	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
@@ -492,8 +523,8 @@ void get_all_status_data(char *data_buff)
 	
 	//没有接传感器，或者没有调用对应的初始化函数会导致出错，使得tlink，那边卡住，然后重启
 	
-	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	//light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
+	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
 	//printf("光敏:light_streng = %d\n",light_streng);
 	
 	//DHT11_Read_Data(&temperature,&humidity);
@@ -509,7 +540,13 @@ void get_all_status_data(char *data_buff)
 	data_buff[7]=(light_streng/10)+48;
 	data_buff[8]=(light_streng%10)+48;
 	
+	light_streng_now=light_streng;
+	printf("light_streng_now = %d\n",light_streng_now);
+	
 	//光照阈值----------后面再进行优化，先实现功能
+	
+	
+	//----------------------------------------------------------要根据到时测试的值进行修改
 	AT24CXX_Read(1,&light_limit,1);
 	switch(light_limit)
 	{
@@ -528,6 +565,9 @@ void get_all_status_data(char *data_buff)
 						break;
 			break;
 	}
+	light_streng_set=(data_buff[10]-48)*10+data_buff[11]-48;
+	printf("light_streng_set = %d \n",light_streng_set);
+	
 	
 	//窗帘的状态----窗帘开关------是统一的
 	if(curtain_status==1)
@@ -1195,7 +1235,8 @@ int main()
 	
 	People_init();
 	
-	
+	//光敏
+	ADC_init();   
 	
 	My_RTC_init();
 	
@@ -1397,6 +1438,31 @@ smart_mode:
 					{
 						data_buff[25]=0+48;
 					}
+//=================================================================================
+					if(light_streng_now>light_streng_set)//光照强，关窗帘 light_streng_set会每十秒检测有没有改动
+					{
+						if(curtain_status==1)
+						{
+							close_rotate();
+							curtain_status=0;
+							LCD_DisplayChinese_one(135,185,25,24);
+							printf("curtain close\n");
+						}
+					}
+					else	//当前光照不强，打开窗帘
+					{
+						if(curtain_status==0)
+						{
+							open_rotate();
+							curtain_status=1;
+							LCD_DisplayChinese_one(135,185,24,24);
+							printf("curtain open \n");
+						}
+					}
+					
+					
+//===================================================================================					
+					
 					
 				}
 				break;
@@ -1462,12 +1528,15 @@ hand_mode:
 						delay_ms(200);
 						LCD_DisplayChinese_one(140,143,24,24);
 						
-						curtain_status=1;
+						if(curtain_status==0)
+						{
+							curtain_status=1;
 						//add 马上发送消息到服务器上，不要切太快
-						
-						get_all_status_data(data_buff);
-						SENDstr_to_server(data_buff);
-						
+							get_all_status_data(data_buff);
+							SENDstr_to_server(data_buff);
+//=======================================================
+							open_rotate();
+						}
 						
 						//printf("on \n");
 					}
@@ -1478,14 +1547,17 @@ hand_mode:
 						delay_ms(200);
 						LCD_DisplayChinese_one(140,143,25,24);
 						
-						curtain_status=0;
-						//add 马上发送消息到服务器上，不要切太快
-						get_all_status_data(data_buff);
-						SENDstr_to_server(data_buff);
-						
-						
-						
+						if(curtain_status==1)
+						{
+							curtain_status=0;
+							//add 马上发送消息到服务器上，不要切太快
+							get_all_status_data(data_buff);
+							SENDstr_to_server(data_buff);
+//====================================================================	
+							close_rotate();
+						}
 						//printf("off \n");
+
 					}
 					
 					//设置定时开关
