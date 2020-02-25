@@ -162,7 +162,7 @@ void UART4_IRQHandler(void)
 								data_fromserver[num_from_server-1]='\0';
 								LED1=!LED1;
 								//对命令的处理
-								
+								//前面的usart1 会打印出整个命令，所有有点不正常
 								printf("order from server = %s=%d \n",data_fromserver,strlen(data_fromserver));
 								
 								
@@ -240,19 +240,28 @@ void UART4_IRQHandler(void)
 									{
 										label_closetime=1;
 									}
-									
+									has_set_time_online=0;//设备在线的时候，开启了定时，会1秒去检测一次，把它顺便关闭了即可，在那边也做了对应加强了跳转手动的条件
 								}
 								else if(strcmp(data_fromserver,"alarm_on")==0)//开夜晚蜂鸣器警报
 								{
-									LCD_DisplayChinese_one(205,264,24,24);
-									beep_status=1;
-									AT24CXX_Write(2,&beep_status,1);
+									if(beep_status==0)
+									{
+										LCD_DisplayChinese_one(205,264,24,24);
+										beep_status=1;
+										AT24CXX_Write(2,&beep_status,1);
+									}
+									
 								}
 								else if(strcmp(data_fromserver,"alarm_off")==0)//关夜晚蜂鸣器警报
 								{
-									LCD_DisplayChinese_one(205,264,25,24);
-									beep_status=0;
-									AT24CXX_Write(2,&beep_status,1);
+									if(beep_status==1)
+									{
+										LCD_DisplayChinese_one(205,264,25,24);
+										beep_status=0;
+										AT24CXX_Write(2,&beep_status,1);
+									
+									}
+									
 								}
 								else if(strcmp(data_fromserver,"update_on")==0)//获取最新数据
 								{
@@ -477,35 +486,11 @@ void stop_rotate(void)
 	IN2=0;
 }
 
-////初始化dht11 光敏、RTC
-//void ALL_SENSOR_init(void)
-//{
-//	//****************************************//
-//  //如果没有dht11 灯会闪烁
-//	while(DHT11_init())
-//	{
-//		LED1=!LED1;
-//	}
-   
-//	//RTC
-//	My_RTC_init();
-//	//在这里设置选择了ck_spre的时钟频率，即1HZ的频率
-//	//所有给0 会产生1S
-//	//可看寄存器的配置,10x是选择了ck_spre的时钟频率
-//	RTC_Set_WakeUp(RTC_WakeUpClock_CK_SPRE_16bits,0);//WAKE UP
-//	
-//	ELECTRI_motor_init();
-//	
-//	People_init();
-//	
-//}
+
 
 ///*
 //	功能：获取各个传感器数据，以及控制状态值
 //	
-//*/
-
-
 
 //获取dht11 光敏、
 void get_all_status_data(char *data_buff)
@@ -523,8 +508,8 @@ void get_all_status_data(char *data_buff)
 	
 	//没有接传感器，或者没有调用对应的初始化函数会导致出错，使得tlink，那边卡住，然后重启
 	
-	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
+	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	//light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
 	//printf("光敏:light_streng = %d\n",light_streng);
 	
 	//DHT11_Read_Data(&temperature,&humidity);
@@ -936,11 +921,14 @@ void SET_time(void)
 	u8 time_buff[40]={0};//存放定时的时间,没有初始化会出现一些意外的bug，如出现一斜杆
 	u8 date_buff[40];//存放定时的日期
 	u8 test[40];//从24c02 读取数据测试
-	u8 curtain_status_insettime=3;//窗帘状态,只有0/1 状态是有效的，其他数字是无效的
+	u8 curtain_status_choose_insettime=3;//选择窗帘状态,只有0/1 状态是有效的，其他数字是无效的
 	short set_tim_success=-1; //时间的设置是正常的 
 	u8 had_settimeflag=3; //检测是否有设置了
 	u8 temp;
-	u8 set_curtain_status;//定时设置窗帘的开关，不是直接反应窗帘状态
+	u8 set_curtain_status;//定时设置窗帘的开关，不是直接反应窗帘状态,用来清理=3
+	
+	
+	u8 set_time_successful=0;//0 ：未设置，1：设置成功
 	
 	BRUSH_COLOR=RED;
 	
@@ -974,7 +962,7 @@ void SET_time(void)
 		LCD_DisplayString_color(70,81,24,time_buff,BLUE,WHITE);
 		
 		//printf("######################time_buff = %s \n",time_buff);
-		
+		set_time_successful=1;//不可以去选择开关了
 		if(had_settimeflag==0)
 		{
 			LCD_DisplayChinese_one(110,108,25,24);
@@ -1008,15 +996,25 @@ void SET_time(void)
 		if(Xdown>30&&Xdown<86&&Ydown>145&&Ydown<183)
 		{
 			delay_ms(200);
-			LCD_DisplayChinese_one(110,108,24,24);
-			curtain_status_insettime=1;
+			
+			if(set_time_successful==0)//还没有设置成功！还可以点击
+			{
+				LCD_DisplayChinese_one(110,108,24,24);
+				curtain_status_choose_insettime=1;
+			}
+			
 		}
 		//关
 		if(Xdown>154&&Xdown<210&&Ydown>145&&Ydown<183)
 		{
 			delay_ms(200);
-			LCD_DisplayChinese_one(110,108,25,24);
-			curtain_status_insettime=0;
+			
+			if(set_time_successful==0)//还没有设置成功！还可以点击
+			{
+				LCD_DisplayChinese_one(110,108,25,24);
+				curtain_status_choose_insettime=0;
+			}
+			
 		}
 		//关闭/取消定时
 		if(Xdown>197&&Xdown<240&&Ydown>0&&Ydown<43)
@@ -1030,6 +1028,10 @@ close:
 			//在添加上把at24c02里边的值清理干净
 			AT24CXX_Write(4,(u8*)&set_curtain_status,1);
 			has_set_time_online=0;//是否设置了定时，让rtc的秒中断实时去处理
+			
+			set_time_successful=0;//可以重新选择窗帘状态
+			
+			set_tim_success=0;//取消了设置，需要对设置定时成功的标志清一下
 		}
 		
 		
@@ -1101,6 +1103,8 @@ close:
 									//printf("set time no\n");
 									LCD_DisplayString_color(30,280,24,"Please Reset time",BLUE,WHITE);
 									for(j=0;j<200;j++) delay_ms(10);
+									
+									set_time_successful=0;//设置失败，可以重新选择窗帘状态
 								}
 						 }
 						 else
@@ -1108,14 +1112,16 @@ close:
 								//printf("set date no\n");
 								LCD_DisplayString_color(30,280,24,"Please Reset date",BLUE,WHITE);
 							  for(j=0;j<200;j++) delay_ms(10);
+							 
+								set_time_successful=0;//设置失败，可以重新选择窗帘状态
 						 }
 						 
 						 //设置的定时没有问题，再确认有选择窗帘开关，写入at24c02，时间比窗帘的开关更有必要
 						 if(set_tim_success==1)
 						 {
-							 if(curtain_status_insettime!=3)
+							 if(curtain_status_choose_insettime!=3)
 							 {
-									printf("set and choose ok，curtain_status= %d \n",curtain_status_insettime);
+									printf("set and choose ok，curtain_status= %d \n",curtain_status_choose_insettime);
 									LCD_DisplayString_color(30,280,24,"Adjust TIM OK          ",BLUE,WHITE);
 									//for(j=0;j<100;j++) delay_ms(10);  // Adjust OK 调整OK显示1秒
 									//LCD_DisplayString(30,280,24,"                        ");
@@ -1127,7 +1133,7 @@ close:
 									//AT24CXX_Read(0,test,strlen(date_buff));
 									//printf("test = %s\n",test);
 								 */
-									AT24CXX_Write(4,(u8*)&curtain_status_insettime,1);
+									AT24CXX_Write(4,(u8*)&curtain_status_choose_insettime,1);
 									//delay_ms(100);
 								  //AT24CXX_Read(4,&temp,1);
 									//printf("temp = %d \n",temp);
@@ -1141,6 +1147,10 @@ close:
 									
 									//printf("test = %s\n",test);
 									has_set_time_online=1;
+									set_time_successful=1;//定时成功---不可以再去选择窗帘状态
+									curtain_status_choose_insettime=3;//定时成功后，又想在同个界面重新定时，
+																										
+									set_tim_success=0;//防止继续设置，会导致设置成功，需要清零
 									
 								  option=0;    //选项从头来
 									process=0;   //短按KEY3时间设置完成 返回到时间显示
@@ -1234,12 +1244,18 @@ int main()
   	LED0=!LED0;
 	}
 	
+  //如果没有dht11 灯会闪烁，需解释出来
+//	while(DHT11_init())
+//	{
+//		LED1=!LED1;
+//	}
+	
 	People_init();
 	
-	//光敏
-	ADC_init();   
-	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	light_streng_now=(4096-adcx)*100/4096;
+	//光敏   需解释出来，在更新数据部分也要解出来
+	//ADC_init();   
+	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	//light_streng_now=(4096-adcx)*100/4096;
 	
 	My_RTC_init();
 	
@@ -1260,7 +1276,7 @@ int main()
 	
 	printf("start \n");
 	
-ELECTRI_motor_init();
+	ELECTRI_motor_init();
 	//先对24C02存储的值进行判断，先初始化一下，可以进行优化一下
 
 	//光照阈值

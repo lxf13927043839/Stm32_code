@@ -17,7 +17,7 @@ u8 My_RTC_init(void)
 	u16 retry=0X1FFF;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);//Ê¹ÄÜPWRÊ±ÖÓ
 	PWR_BackupAccessCmd(ENABLE); //Ê¹ÄÜºó±¸¼Ä´æÆ÷·ÃÎÊ
-	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5030)//ÊÇ·ñµÚÒ»´ÎÅäÖÃ¡£¿
+	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5020)//ÊÇ·ñµÚÒ»´ÎÅäÖÃ¡£¿
 	{
 		RCC_LSEConfig(RCC_LSE_ON);//LSE ¿ªÆô
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) 
@@ -43,14 +43,14 @@ u8 My_RTC_init(void)
 		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
 		
 		//ÉèÖÃÈÕÆÚ
-		RTC_DateStruct.RTC_Date = 0x16;
+		RTC_DateStruct.RTC_Date = 0x24;
 		RTC_DateStruct.RTC_Month = 0x02;
 		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Saturday;
 		RTC_DateStruct.RTC_Year = 0x20;
 		
 		RTC_SetDate(RTC_Format_BCD, &RTC_DateStruct);
 		
-		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5030);//±ê¼ÇÒÑ¾­³õÊ¼»¯¹ıÁË
+		RTC_WriteBackupRegister(RTC_BKP_DR0,0x5020);//±ê¼ÇÒÑ¾­³õÊ¼»¯¹ıÁË
 	}
 	return 0;
 }
@@ -219,13 +219,14 @@ void LCD_showtime_RTC(void)
 		if(strcmp((char *)set_time_buff,(char *)temp_buff)==0)
 		{
 			AT24CXX_Read(3,&mode_now,1);
-			if(mode_now==1)//ÖÇÄÜÄ£Ê½£¬ÇĞ»»
+			AT24CXX_Read(4,&curtain_flag,1);
+			
+			if(mode_now==1&&(curtain_flag==1||curtain_flag==0))//ÖÇÄÜÄ£Ê½£¬ÇĞ»»,ĞèÒªÂú×ãÖÇÄÜÄ£Ê½£¬¶øÇÒÓĞ¶¨Ê±µÄ±êÖ¾
 			{
 				label_mode=1;
 				printf("system mode change by set time \n");
 			}	
 			
-			AT24CXX_Read(4,&curtain_flag,1);
 			if(curtain_flag==1)//¶¨Ê±µÄ´°Á±ÊÇ¿ª»¹ÊÇ¹Ø 1 ¿ª 0 ¹Ø
 			{
 				if(curtain_status==0)
