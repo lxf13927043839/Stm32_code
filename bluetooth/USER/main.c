@@ -508,8 +508,8 @@ void get_all_status_data(char *data_buff)
 	
 	//没有接传感器，或者没有调用对应的初始化函数会导致出错，使得tlink，那边卡住，然后重启
 	
-	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	//light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
+	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
 	//printf("光敏:light_streng = %d\n",light_streng);
 	
 	//DHT11_Read_Data(&temperature,&humidity);
@@ -608,7 +608,7 @@ void get_all_status_data(char *data_buff)
 // /*------------------------------------------------------------------- 
 //	1、汉字大小：24*24共 72字节
 //  2、显示汉字时调用对应序号：
-//	温(0) 湿(1) 度(2) 光(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
+//	日(0) 期(1) 时(2) 间(3) 照(4) 强(5) 度(6) 窗(7) 帘(8) 状(9) 态(10) 智(11) 能(12) 手(13) 动(14) 模(15)
 //       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
 // */
 
@@ -691,11 +691,16 @@ u8 const *set_option[7]={"Year","Month","Day","Hours","Minutes","Seconds"," "};
 
 void Time_Display()//把变化的时间写入
 {
- LCD_DisplayString(30,220,24,"Date:20  -  -  ");
- LCD_DisplayNum(114,220,RTC_DateStruct.RTC_Year,2,24,1);
+ LCD_DisplayChinese_one(30,220,0,24);
+ LCD_DisplayChinese_one(54,220,1,24);
+ LCD_DisplayString(78,220,24,":20  -  -  ");
+ LCD_DisplayNum(114,220,RTC_DateStruct.RTC_Year,2,24,1);//把0给补上了
  LCD_DisplayNum(150,220,RTC_DateStruct.RTC_Month,2,24,1);
  LCD_DisplayNum(186,220,RTC_DateStruct.RTC_Date,2,24,1);
- LCD_DisplayString(30,250,24,"Time:  :  :  ");
+	
+ LCD_DisplayChinese_one(30,250,2,24);
+ LCD_DisplayChinese_one(54,250,3,24);
+ LCD_DisplayString(78,250,24,":  :  :  ");
  LCD_DisplayNum(90,250,RTC_TimeStruct.RTC_Hours,2,24,1);	
  LCD_DisplayNum(126,250,RTC_TimeStruct.RTC_Minutes,2,24,1);
  LCD_DisplayNum(162,250,RTC_TimeStruct.RTC_Seconds,2,24,1);
@@ -1203,7 +1208,7 @@ void beepalarm_in_night(void)
 //-*****************************************//
 
 
-
+u8 light_control_valid;
 //尽量最终程序减少不必要的打印
 
 int main()
@@ -1253,9 +1258,9 @@ int main()
 	People_init();
 	
 	//光敏   需解释出来，在更新数据部分也要解出来
-	//ADC_init();   
-	//adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
-	//light_streng_now=(4096-adcx)*100/4096;
+	ADC_init();   
+	adcx=Get_Adc_Average(ADC_Channel_9,20);//获取通道9的转换值，20次取平均
+	light_streng_now=(4096-adcx)*100/4096;
 	
 	My_RTC_init();
 	
@@ -1307,7 +1312,7 @@ int main()
 		switch(status)
 		{
 			case 1://------------------------------智能模式--------------------
-				
+				light_control_valid=1;
 				image_display(0,0,(u8*)gImage_smart_mode);
 				LCD_showdate();//五秒刷新一次，到时候
 			
@@ -1460,7 +1465,7 @@ smart_mode:
 //=================================================================================
 					if(light_streng_now>light_streng_set)//光照强，关窗帘 light_streng_set会每十秒检测有没有改动
 					{
-						if(curtain_status==1)
+						if(curtain_status==1&&light_control_valid==1)
 						{
 							close_rotate();
 							curtain_status=0;
@@ -1470,7 +1475,7 @@ smart_mode:
 					}
 					else	//当前光照不强，打开窗帘
 					{
-						if(curtain_status==0)
+						if(curtain_status==0&&light_control_valid==1)
 						{
 							open_rotate();
 							curtain_status=1;

@@ -161,6 +161,7 @@ extern u8 curtain_status;//当前窗帘的状态
 extern u8 has_set_time_online;
 extern u8 set_time_buff[];
 extern u8 label_mode;//改变模式
+extern u8 light_control_valid;//控制智能光照有效标志
 
 void open_rotate(void);//电机转动打开窗帘
 void close_rotate(void);
@@ -227,6 +228,7 @@ void LCD_showtime_RTC(void)
 				printf("system mode change by set time \n");
 			}	
 			
+			light_control_valid=0;
 			if(curtain_flag==1)//定时的窗帘是开还是关 1 开 0 关
 			{
 				if(curtain_status==0)
