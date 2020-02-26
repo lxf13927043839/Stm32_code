@@ -1228,6 +1228,9 @@ int main()
 	int chinese_mode[3]={11,12,-1};//模式的名字:智能
 	u8 light_status=0;//1:弱 2：中 3：强
 	
+	RTC_TimeTypeDef RTC_TimeStruct_in_main;
+	u8 temp_buff[40];
+	
 	//test
 	Systick_init(168);  //初始化延时函数，没有初始化会导致程序卡死
 	
@@ -1311,10 +1314,17 @@ int main()
 	{
 		switch(status)
 		{
-			case 1://------------------------------智能模式--------------------
+			case 1://------------------------------智能模式-------------------
+			
 				light_control_valid=1;
 				image_display(0,0,(u8*)gImage_smart_mode);
-				LCD_showdate();//五秒刷新一次，到时候
+				LCD_showdate();//十秒刷新一次，到时候
+			
+				//不会让时间闪烁一下
+				RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct_in_main);
+				sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct_in_main.RTC_Hours,RTC_TimeStruct_in_main.RTC_Minutes,RTC_TimeStruct_in_main.RTC_Seconds);
+				LCD_DisplayString(142,295,24,temp_buff); //显示一个12/16/24字体字符串
+			
 			
 				AT24CXX_Read(1,&light_status,1);
 				if(light_status==1)//弱
@@ -1492,8 +1502,15 @@ smart_mode:
 				break;
 			
 			case 0://-------------------------手动-------------------------
+				
+			
 				image_display(0,0,(u8*)gImage_hand_mode);
 				LCD_showdate();
+			
+				//不会让时间闪烁一下
+				RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct_in_main);
+				sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct_in_main.RTC_Hours,RTC_TimeStruct_in_main.RTC_Minutes,RTC_TimeStruct_in_main.RTC_Seconds);
+				LCD_DisplayString(142,295,24,temp_buff); //显示一个12/16/24字体字符串
 //-----------------------------------------------------------			
 				//窗帘状态----到时候会先去读取该值的
 				if(curtain_status==0)
