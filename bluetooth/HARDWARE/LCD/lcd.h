@@ -16,7 +16,7 @@ extern	u16  setxcmd;		     //设置x坐标指令
 extern	u16  setycmd;		     //设置y坐标指令	 
 
 //LCD的画笔颜色和背景色	   
-extern u16  BRUSH_COLOR;//默认红色    
+extern u16  BRUSH_COLOR;//默认黑色    
 extern u16  BACK_COLOR; //背景颜色.默认为白色
 
 
@@ -57,6 +57,8 @@ extern u16  BACK_COLOR; //背景颜色.默认为白色
 #define  MAGENTA      0xF81F
 #define  CYAN         0x7FFF
 #define  YELLOW       0xFFE0
+#define  Font_time_blue 0x0864
+#define  Chinese_Micolor 0xEF9C
 
 	    			
 void LCD_WriteReg(u16 LCD_Reg, u16 LCD_Value);

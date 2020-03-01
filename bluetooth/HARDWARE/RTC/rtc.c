@@ -180,7 +180,7 @@ void LCD_showtime_RTC(void)
 	u8 temp_buff[40]; 
 	
 	//显示时间
-	x=142;y=295;
+	x=143;y=0;
 	RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct);
 	sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
 	//printf("%s\n",temp_buff);
@@ -195,7 +195,7 @@ void LCD_showtime_RTC(void)
 		//printf("six is arrival\n");
 	}
 	if(enter_set_time==0)
-	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+	LCD_DisplayString_color(x,y,24,temp_buff,WHITE,Font_time_blue); //显示一个12/16/24字体字符串
 	
 	//-----------------判断是否有设置了定时-------
 
@@ -239,7 +239,7 @@ void LCD_showtime_RTC(void)
 					open_rotate();
 					printf("curtain open from set time\n");
 					curtain_status=1;
-					LCD_DisplayChinese_one(140,143,24,24);
+					LCD_DisplayChinese_one(184,128,24,24);
 					
 				}			
 			}
@@ -253,7 +253,7 @@ void LCD_showtime_RTC(void)
 					printf("curtain close from set time\n");
 					close_rotate();
 					curtain_status=0;
-					LCD_DisplayChinese_one(140,143,25,24);
+					LCD_DisplayChinese_one(184,128,25,24);
 				}				
 			}
 			curtain_flag=3;

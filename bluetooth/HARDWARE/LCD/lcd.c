@@ -786,7 +786,7 @@ void LCD_DisplayChar(u16 x,u16 y,u8 word,u8 size)
 		for(a=0;a<8;a++)   
 		{	   
 			if(bytedata&0x01) LCD_Color_DrawPoint(x,y,BRUSH_COLOR); //由于子模是低位在前 所以先从低位判断  为1时显示画笔颜色      
-			else LCD_Color_DrawPoint(x,y,0xBE18);               //0时显示背景颜色		
+			else LCD_Color_DrawPoint(x,y,BACK_COLOR);               //0时显示背景颜色		
 			bytedata>>=1;    //低位判断完 依次往高位判断
 			x++;	           //显示完一位 往下一位显示 
 			
@@ -825,7 +825,7 @@ void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size)
 		for(a=0;a<8;a++)   
 		{	   
 				if(bytedata&0x01) LCD_Color_DrawPoint(x,y,BRUSH_COLOR); //由于子模是低位在前 所以先从低位判断  为1时显示画笔颜色      
-				else LCD_Color_DrawPoint(x,y,0xBE18);               //0时显示背景颜色		
+				else LCD_Color_DrawPoint(x,y,BACK_COLOR);               //0时显示背景颜色		
 				bytedata>>=1;    //低位判断完 依次往高位判断
 				x++;	           //显示完一位 往下一位显示 
 				if((x-xmid)==24)  //x方向超出字体宽度 如：24字体 实际是 24*24的点阵  
@@ -856,6 +856,23 @@ void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p)
         p++;
     }  
 }
+void LCD_DisplayChinese_string_color(u16 x,u16 y,u8 size,int *p,u16 brushcolor,u16 backcolor)
+{
+	u16 bh_color,bk_color;
+	
+ 	bh_color=BRUSH_COLOR;  //暂存画笔颜色
+	bk_color=BACK_COLOR;   //暂存背景颜色
+	
+	BRUSH_COLOR=brushcolor;
+	BACK_COLOR=backcolor;
+	
+	LCD_DisplayChinese_string(x,y,size,p);
+	
+	BRUSH_COLOR=bh_color;   //不改变系统颜色
+	BACK_COLOR=bk_color;
+}
+
+//==========================================================================================
 
 
 /****************************************************************************

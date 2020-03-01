@@ -51,6 +51,7 @@ void delay_ms(u16 nms);
 //---------------------显示单个汉字与汉字字符串--------------------------
 void LCD_DisplayChinese_one(u16 x,u16 y,u8 word,u8 size);
 void LCD_DisplayChinese_string(u16 x,u16 y,u8 size,int *p);
+void LCD_DisplayChinese_string_color(u16 x,u16 y,u8 size,int *p,u16 brushcolor,u16 backcolor);
 
 void LCD_DisplayChar(u16 x,u16 y,u8 word,u8 size); //显示一个字符
 void LCD_DisplayString(u16 x,u16 y,u8 size,u8 *p); //显示一个12/16/24字体字符串
@@ -177,7 +178,7 @@ void UART4_IRQHandler(void)
 										if(curtain_status==0)
 										{
 											curtain_status=1;
-											LCD_DisplayChinese_one(140,143,24,24);
+											LCD_DisplayChinese_one(184,128,24,24);
 //===========================================================================================											
 											//add 电机控制
 											open_rotate();
@@ -198,7 +199,7 @@ void UART4_IRQHandler(void)
 										if(curtain_status==1)
 										{
 											curtain_status=0;
-											LCD_DisplayChinese_one(140,143,25,24);
+											LCD_DisplayChinese_one(184,128,25,24);
 //===========================================================================================
 											close_rotate();
 											printf("close curtain from server\n");
@@ -244,9 +245,19 @@ void UART4_IRQHandler(void)
 								}
 								else if(strcmp(data_fromserver,"alarm_on")==0)//开夜晚蜂鸣器警报
 								{
+									
 									if(beep_status==0)
 									{
-										LCD_DisplayChinese_one(205,264,24,24);
+										AT24CXX_Read(3,(u8 *)&temp,1);
+										if(temp == 1)
+										{
+											LCD_DisplayChinese_one(81,219,24,24);
+										}
+										else
+										{
+											LCD_DisplayChinese_one(81,199,24,24);
+										}
+										
 										beep_status=1;
 										AT24CXX_Write(2,&beep_status,1);
 									}
@@ -254,9 +265,18 @@ void UART4_IRQHandler(void)
 								}
 								else if(strcmp(data_fromserver,"alarm_off")==0)//关夜晚蜂鸣器警报
 								{
+									
 									if(beep_status==1)
 									{
-										LCD_DisplayChinese_one(205,264,25,24);
+										AT24CXX_Read(3,(u8 *)&temp,1);
+										if(temp == 1)
+										{
+											LCD_DisplayChinese_one(81,219,25,24);
+										}
+										else
+										{
+											LCD_DisplayChinese_one(81,199,25,24);
+										}
 										beep_status=0;
 										AT24CXX_Write(2,&beep_status,1);
 									
@@ -615,55 +635,65 @@ void get_all_status_data(char *data_buff)
 extern u8 Zero_to_six_clock;
 void LCD_showdate(void)
 {
-	int x=0,y=0;
+	int x=0,y=0,x1=0,y1=0;
 	int level;
 	u8 temp[2];
 	RTC_DateTypeDef RTC_DateStruct;
 	u8 temp_buff[40]; 
+	u8 mode=5;
 	
-	BRUSH_COLOR=RED;      //设置画笔颜色为黑色
+	
 	//温度
-	x=95,y=47;
+	x=66,y=45;
 	temp[0]=data_buff[1];
 	temp[1]=data_buff[2];
 	LCD_DisplayString(x,y,24,temp); //显示一个24字体字符串，宽只占了12,字符显示时候
 	LCD_DisplayChinese_one(x+12*2,y,19,24);
 	
 	//湿度
-	x=95;y=80;
+	x=165;y=45;
 	temp[0]=data_buff[4];
 	temp[1]=data_buff[5];
 	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
 	LCD_DisplayChinese_one(x+12*2,y,20,24);
 
 	//光照强度----采用弱、中、强来表示，数字意义不大
-	x=95;y=113;
+	AT24CXX_Read(3,&mode,1);
+	if(mode==1)//智能模式
+	{
+		x=66;y=138;
+		x1=93;y1=171;
+	}
+	else if(mode == 0)//手动模式
+	{
+		x=66;y=128;
+		x1=93;y1=160;
+	}
 	temp[0]=data_buff[7];
 	temp[1]=data_buff[8];
 	LCD_DisplayString(x,y,24,temp); //显示一个12/16/24字体字符串
 	LCD_DisplayChinese_one(x+12*2,y,20,24);
-	LCD_DisplayChar(x+12*2+24*1,y,'(',24);
+	
 	level=(temp[0]-48)*10+(temp[1]-48);
 	if(level>=0&&level<=40)
 	{
-		LCD_DisplayChinese_one(x+12*2+24*2-12,y,21,24);
+		LCD_DisplayChinese_one(x1,y1,21,24);
 	}
 	else if(level>40&&level<=70)
 	{
-		LCD_DisplayChinese_one(x+12*2+24*2-12,y,22,24);
+		LCD_DisplayChinese_one(x1,y1,22,24);
 	}
 	else if(level>70&&level<=100)
 	{
-		LCD_DisplayChinese_one(x+12*2+24*2-12,y,23,24);
+		LCD_DisplayChinese_one(x1,y1,23,24);
 	}
-	LCD_DisplayChar(x+12*2+24*3-12,y,')',24);
-		
+ 
 	//显示日期
-	x=5;y=295;
+	x=0;y=0;
 	RTC_GetDate(RTC_Format_BIN, &RTC_DateStruct);
 	sprintf((char*)temp_buff,"20%02d-%02d-%02d",RTC_DateStruct.RTC_Year,RTC_DateStruct.RTC_Month,RTC_DateStruct.RTC_Date);
 	//printf("%s\n",temp_buff);
-	LCD_DisplayString(x,y,24,temp_buff); //显示一个12/16/24字体字符串
+	LCD_DisplayString_color(x,y,24,temp_buff,WHITE,Font_time_blue); //显示一个12/16/24字体字符串
 	
 	//显示时间测试位置,显示ok---该函数放在秒的唤醒服务函数
 	
@@ -687,44 +717,68 @@ extern const u8 gImage_hand_mode[];
             按KEY2右移选择要设置的选项，在调整完后短按KEY3，确认调整时间         
 *********************************************************************************/
 
-u8 const *set_option[7]={"Year","Month","Day","Hours","Minutes","Seconds"," "};
+
 
 void Time_Display()//把变化的时间写入
 {
- LCD_DisplayChinese_one(30,220,0,24);
- LCD_DisplayChinese_one(54,220,1,24);
- LCD_DisplayString(78,220,24,":20  -  -  ");
- LCD_DisplayNum(114,220,RTC_DateStruct.RTC_Year,2,24,1);//把0给补上了
- LCD_DisplayNum(150,220,RTC_DateStruct.RTC_Month,2,24,1);
- LCD_DisplayNum(186,220,RTC_DateStruct.RTC_Date,2,24,1);
+	int x,y;
+	x = 83; y = 22;
+
+ LCD_DisplayString(x,y,24,"20  -  -  ");
+ LCD_DisplayNum(x+36-12,y,RTC_DateStruct.RTC_Year,2,24,1);//把0给补上了
+ LCD_DisplayNum(x+72-12,y,RTC_DateStruct.RTC_Month,2,24,1);
+ LCD_DisplayNum(x+108-12,y,RTC_DateStruct.RTC_Date,2,24,1);
 	
- LCD_DisplayChinese_one(30,250,2,24);
- LCD_DisplayChinese_one(54,250,3,24);
- LCD_DisplayString(78,250,24,":  :  :  ");
- LCD_DisplayNum(90,250,RTC_TimeStruct.RTC_Hours,2,24,1);	
- LCD_DisplayNum(126,250,RTC_TimeStruct.RTC_Minutes,2,24,1);
- LCD_DisplayNum(162,250,RTC_TimeStruct.RTC_Seconds,2,24,1);
- //LCD_DisplayString(30,260,16,"Week:        ");
- //LCD_DisplayString(70,260,16,(u8 *)weekdate[RTC_DateStruct.RTC_WeekDay-1]);
+  x = 107; y = 50;
+
+ LCD_DisplayString(x,y,24,"  :  :  ");
+ LCD_DisplayNum(x+12-12,y,RTC_TimeStruct.RTC_Hours,2,24,1);	
+ LCD_DisplayNum(x+48-12,y,RTC_TimeStruct.RTC_Minutes,2,24,1);
+ LCD_DisplayNum(x+84-12,y,RTC_TimeStruct.RTC_Seconds,2,24,1);
+
 }
 void Time_has_set()//显示定时的时间
 {
- LCD_DisplayString(70,57,24,"20  -  -  ");
- LCD_DisplayNum(94,57,RTC_DateStruct.RTC_Year,2,24,1);
- LCD_DisplayNum(130,57,RTC_DateStruct.RTC_Month,2,24,1);
- LCD_DisplayNum(166,57,RTC_DateStruct.RTC_Date,2,24,1);
- LCD_DisplayString(70,81,24,"  :  :  ");
- LCD_DisplayNum(70,81,RTC_TimeStruct.RTC_Hours,2,24,1);	
- LCD_DisplayNum(106,81,RTC_TimeStruct.RTC_Minutes,2,24,1);
- LCD_DisplayNum(142,81,RTC_TimeStruct.RTC_Seconds,2,24,1);
+ int x,y;
+ x = 36; y = 155;
+ BRUSH_COLOR=BLUE;
+	
+ LCD_DisplayString_color(x,y,24,"20  -  -  ",BLUE,Chinese_Micolor);
+ LCD_DisplayNum(x+24,y,RTC_DateStruct.RTC_Year,2,24,1);
+ LCD_DisplayNum(x+60,y,RTC_DateStruct.RTC_Month,2,24,1);
+ LCD_DisplayNum(x+96,y,RTC_DateStruct.RTC_Date,2,24,1);
+	
+ x = 60; y = 183;
+ LCD_DisplayString_color(x,y,24,"  :  :  ",BLUE,Chinese_Micolor);
+ LCD_DisplayNum(x,y,RTC_TimeStruct.RTC_Hours,2,24,1);	
+ LCD_DisplayNum(x+36,y,RTC_TimeStruct.RTC_Minutes,2,24,1);
+ LCD_DisplayNum(x+72,y,RTC_TimeStruct.RTC_Seconds,2,24,1);
+	
+ BRUSH_COLOR=RED;
 }
+
+//u8 const *set_option[7]={"Year","Month","Day","Hours","Minutes","Seconds"," "};
+ /*------------------------------------------------------------------- 
+	1、汉字大小：24*24共 72字节
+    2、显示汉字时调用对应序号：
+	   日(0) 期(1) 时(2) 间(3) 请(4) 重(5) 新(6) 设(7) 置(8) 选(9) 择(10) 智(11) 能(12) 手(13) 动(14) 模(15)
+       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
+			 年（26） 月（27）日（28）时（29）分（30）秒（31）定（32）成（33）功（34）空白（35）
+ */
+int set_option[6]={26,27,28,29,30,31};
+int Please_Set[4]={4,7,8,-1};
 
 void ADJUST_time(u8 option,u8 shanshuo)
 {
+		
+	
 		if(shanshuo%50==0)  //提示现在要设置的选项
 		{
-		  LCD_DisplayString_color(30,280,24,"Please Set          ",BLUE,WHITE);
-		  LCD_DisplayString_color(162,280,24,(u8 *)set_option[option],BLUE,WHITE);
+		  //LCD_DisplayString_color(34,99,24,"Please Set          ",BLUE,WHITE);
+		  //LCD_DisplayString_color(162,99,24,(u8 *)set_option[option],BLUE,WHITE);
+		
+			LCD_DisplayChinese_string_color(30,99,24,Please_Set,BLUE,Chinese_Micolor);
+			LCD_DisplayChinese_one(127,99,set_option[option],24);
 		}
 		
 		//设置时数值的加减1
@@ -900,14 +954,18 @@ void ADJUST_time(u8 option,u8 shanshuo)
 //			LCD_DisplayNum(118,240,RTC_TimeStruct.RTC_Seconds,2,16,1);
 	}	
 		//闪烁显示：不显示
+	
 	switch(option)
 	{  
-		case 0: {  if(shanshuo==49)  LCD_DisplayString(114,220,24,"  ");	 break;  }
-		case 1: {  if(shanshuo==49)  LCD_DisplayString(150,220,24,"  "); break;  }
-		case 2: {  if(shanshuo==49)  LCD_DisplayString(186,220,24,"  "); break;  }
-		case 3: {  if(shanshuo==49)  LCD_DisplayString(90,250,24,"  ");  break;  }
-		case 4: {  if(shanshuo==49)	 LCD_DisplayString(126,250,24,"  ");	 break;	 }
-		case 5: {  if(shanshuo==49)	 LCD_DisplayString(162,250,24,"  "); break;  }		
+		//"20  -  -  "开头83
+		case 0: {  if(shanshuo==49)  LCD_DisplayString(83+12*2,22,24,"  ");	 break;  }
+		case 1: {  if(shanshuo==49)  LCD_DisplayString(83+12*5,22,24,"  "); break;  }
+		case 2: {  if(shanshuo==49)  LCD_DisplayString(83+12*8,22,24,"  "); break;  }
+		
+		//"  :  :  "  开头107
+		case 3: {  if(shanshuo==49)  LCD_DisplayString(107,50,24,"  ");  break;  }
+		case 4: {  if(shanshuo==49)	 LCD_DisplayString(107+12*3,50,24,"  ");	 break;	 }
+		case 5: {  if(shanshuo==49)	 LCD_DisplayString(107+12*6,50,24,"  "); break;  }		
 	}
 }	
 
@@ -917,25 +975,42 @@ void SET_time(void)
 	//注：有一些函数是初始化过了的，整合时候要删除
 	
 	u8 process=0;  //程序流程走向
-	u8 option=6;     //调整时间选项
+	u8 option=0;     //调整时间选项
 	u8 t=0,j;      //计时参数
 	u8 time_set_flag=0;//是否设置了按键的定时标志
 	u8 now_date_buff[40];//当前的日期
 	u8 now_time_buff[40];//当前的时间
 
 	u8 time_buff[40]={0};//存放定时的时间,没有初始化会出现一些意外的bug，如出现一斜杆
-	u8 date_buff[40];//存放定时的日期
+	u8 date_buff[40]={0};//存放定时的日期
 	u8 test[40];//从24c02 读取数据测试
 	u8 curtain_status_choose_insettime=3;//选择窗帘状态,只有0/1 状态是有效的，其他数字是无效的
 	short set_tim_success=-1; //时间的设置是正常的 
 	u8 had_settimeflag=3; //检测是否有设置了
 	u8 temp;
 	u8 set_curtain_status;//定时设置窗帘的开关，不是直接反应窗帘状态,用来清理=3
-	
-	
+	u8 enter_key3_func=4;
+	int curtain_content[2]={0,-1};
 	u8 set_time_successful=0;//0 ：未设置，1：设置成功
 	
-	BRUSH_COLOR=RED;
+ /*------------------------------------------------------------------- 
+	1、汉字大小：24*24共 72字节
+    2、显示汉字时调用对应序号：
+	   日(0) 期(1) 时(2) 间(3) 请(4) 重(5) 新(6) 设(7) 置(8) 选(9) 择(10) 先(11) 点(12) 击(13) 动(14) 模(15)
+       式(16) 阈（17） 值（18） 摄氏度（19） 百分号（20） 弱（21） 中（22） 强（23） 开（24） 关（25）
+			 年（26） 月（27）日（28）时（29）分（30）秒（31）定（32）成（33）功（34）空白（35）
+ */
+		int Chinese_Reset_Time[8]={4,5,6,7,8,2,3,-1};
+		int Chinese_Reset_Date[8]={4,5,6,7,8,0,1,-1};
+		int Chinese_Reset_Switch[7]={4,5,6,9,10,24,-1};
+		int Chinese_Set_Time_Ok[7]={32,2,7,8,33,34,-1};
+		int Chinese_Reset_Close[7]={25,-1};
+		int Chinese_Clear_Set[9]={35,35,35,35,35,35,35,35,-1};
+		int Chinese_Click_Close[5]={4,11,12,13,-1};
+		
+		char line= '/';
+	
+	
 	
 	//待删除部分
 	/*
@@ -947,11 +1022,13 @@ void SET_time(void)
 	LCD_DisplayString(30,140,16,"KEY0: V++  KEY1: V--");
 	LCD_DisplayString(30,160,16,"KEY2: Right Move");
 	*/
-	RTC_GetTimes(RTC_Format_BIN);//获得系统的时间
-	Time_Display(); //在底下进行的动态显示
 	
 	//显示界面
 	image_display(0,0,(u8*)gImage_set_time);
+	
+	//先刷一下时间，不会出现闪烁情况
+	RTC_GetTimes(RTC_Format_BIN);//获取系统时间
+	Time_Display();
 	
 	//判断之前是否有设置了定时
 	AT24CXX_Read(4,&had_settimeflag,1);
@@ -960,22 +1037,27 @@ void SET_time(void)
 		//printf("正在画图\n");
 		
 		AT24CXX_Read(5,(u8 *)date_buff,10);
-		delay_ms(100);
+		LCD_DisplayString_color(36,155,24,date_buff,BLUE,Chinese_Micolor);
+		//一些延时会导致画面出现闪烁
 		AT24CXX_Read(15,(u8 *)time_buff,8);
+		LCD_DisplayString_color(60,183,24,time_buff,BLUE,Chinese_Micolor);
 		
-		LCD_DisplayString_color(70,57,24,date_buff,BLUE,WHITE);
-		LCD_DisplayString_color(70,81,24,time_buff,BLUE,WHITE);
+		//printf("SET_Time 中的  time_buff = %s \n",date_buff);
+		//printf("SET_Time 中的  time_buff = %s \n",time_buff);
 		
-		//printf("######################time_buff = %s \n",time_buff);
-		set_time_successful=1;//不可以去选择开关了
+		set_time_successful=1;//不可以去选择开关了，在开关画个x
 		if(had_settimeflag==0)
 		{
-			LCD_DisplayChinese_one(110,108,25,24);
+			curtain_content[0]=25;
+			LCD_DisplayChinese_string_color(207,170,24,curtain_content,BLUE,Chinese_Micolor);//显示窗帘状态
 		}else if(had_settimeflag==1)
 		{
-			LCD_DisplayChinese_one(110,108,24,24);
+			curtain_content[0]=24;
+			LCD_DisplayChinese_string_color(207,170,24,curtain_content,BLUE,Chinese_Micolor);//显示窗帘状态
 		}
 	}
+	
+
 	
   while(1) 
 	{		
@@ -990,7 +1072,7 @@ void SET_time(void)
 		}
 		
 		//返回
-		if(Xdown>0&&Xdown<36&&Ydown>0&&Ydown<38)
+		if(Xdown>0&&Xdown<30&&Ydown>0&&Ydown<50)
 		{
 			delay_ms(200);
 			enter_set_time=0;
@@ -998,31 +1080,33 @@ void SET_time(void)
 			break;
 		}
 		//开
-		if(Xdown>30&&Xdown<86&&Ydown>145&&Ydown<183)
+		if(Xdown>108&&Xdown<153&&Ydown>220&&Ydown<265)
 		{
 			delay_ms(200);
 			
 			if(set_time_successful==0)//还没有设置成功！还可以点击
 			{
-				LCD_DisplayChinese_one(110,108,24,24);
+				curtain_content[0]=24;
+				LCD_DisplayChinese_string_color(207,170,24,curtain_content,BLUE,Chinese_Micolor);//显示窗帘状态
 				curtain_status_choose_insettime=1;
 			}
 			
 		}
 		//关
-		if(Xdown>154&&Xdown<210&&Ydown>145&&Ydown<183)
+		if(Xdown>153&&Xdown<198&&Ydown>220&&Ydown<265)
 		{
 			delay_ms(200);
 			
 			if(set_time_successful==0)//还没有设置成功！还可以点击
 			{
-				LCD_DisplayChinese_one(110,108,25,24);
+				curtain_content[0]=25;
+				LCD_DisplayChinese_string_color(207,170,24,curtain_content,BLUE,Chinese_Micolor);//显示窗帘状态
 				curtain_status_choose_insettime=0;
 			}
 			
 		}
 		//关闭/取消定时
-		if(Xdown>197&&Xdown<240&&Ydown>0&&Ydown<43)
+		if(Xdown>198&&Xdown<240&&Ydown>220&&Ydown<265)
 		{
 			delay_ms(200);
 close:			
@@ -1040,13 +1124,24 @@ close:
 		}
 		
 		
+		
 		switch(process)
 		{
 			case 0:   // 流程0：时钟显示
 			     {
 						 if(key_tem==4&&key_time>250)//长按1.25秒，按键释放时，key_time自动设置0，见key.c
 							{
-								process=1;   //长按KEY3 进入调整时间流程
+								AT24CXX_Read(4,&enter_key3_func,1);
+								if(enter_key3_func==1 || enter_key3_func==0)//表明有设置了，不进入key3调时
+								{
+									LCD_DisplayChinese_string_color(30,99,24,Chinese_Click_Close,BLUE,Chinese_Micolor);
+									LCD_DisplayString_color(126,99,24,"CLOSE",BLUE,Chinese_Micolor);
+								}
+								else//没有设置时间
+								{
+									process=1;   //长按KEY3 进入调整时间流程
+								}
+								
 								break;
 							}
 						 if( ((t%50)==0) && (time_set_flag==0) )	//每250ms更新显示,并且没有定时
@@ -1082,7 +1177,7 @@ close:
 						 sprintf((char*)time_buff,"%02d:%02d:%02d",RTC_TimeStruct.RTC_Hours,RTC_TimeStruct.RTC_Minutes,RTC_TimeStruct.RTC_Seconds);
 						 //printf("%s  length = %d\n",time_buff,strlen(time_buff));
 						
-						//获取当前的时间日期,更改了时间
+						//获取当前的时间日期,更改了时间，等等重新需要设置定时的时候，就是最新的时间了
 						 RTC_GetTimes(RTC_Format_BIN);
 						 
 						 sprintf((char*)now_date_buff,"20%02d-%02d-%02d",RTC_DateStruct.RTC_Year,RTC_DateStruct.RTC_Month,RTC_DateStruct.RTC_Date);
@@ -1106,8 +1201,13 @@ close:
 								else
 								{
 									//printf("set time no\n");
-									LCD_DisplayString_color(30,280,24,"Please Reset time",BLUE,WHITE);
+									//LCD_DisplayString_color(34,99,24,"Please Reset time",BLUE,WHITE);
+									
+									LCD_DisplayChinese_string_color(30,99,24,Chinese_Reset_Time,BLUE,Chinese_Micolor);
+									
 									for(j=0;j<200;j++) delay_ms(10);
+									//显示后把位置清空一下，不要影响到后边的显示===设置   年
+									LCD_DisplayChinese_string_color(30,99,24,Chinese_Clear_Set,BLUE,WHITE);
 									
 									set_time_successful=0;//设置失败，可以重新选择窗帘状态
 								}
@@ -1115,19 +1215,24 @@ close:
 						 else
 						 {
 								//printf("set date no\n");
-								LCD_DisplayString_color(30,280,24,"Please Reset date",BLUE,WHITE);
+								//LCD_DisplayString_color(34,99,24,"Please Reset date",BLUE,WHITE);
+							  LCD_DisplayChinese_string_color(30,99,24,Chinese_Reset_Date,BLUE,Chinese_Micolor);
 							  for(j=0;j<200;j++) delay_ms(10);
 							 
+							 //显示后把位置清空一下，不要影响到后边的显示===设置   年
+								LCD_DisplayChinese_string_color(30,99,24,Chinese_Clear_Set,BLUE,WHITE);
 								set_time_successful=0;//设置失败，可以重新选择窗帘状态
 						 }
 						 
 						 //设置的定时没有问题，再确认有选择窗帘开关，写入at24c02，时间比窗帘的开关更有必要
 						 if(set_tim_success==1)
 						 {
-							 if(curtain_status_choose_insettime!=3)
+							 if(curtain_status_choose_insettime ==1 ||curtain_status_choose_insettime ==0)
 							 {
 									printf("set and choose ok，curtain_status= %d \n",curtain_status_choose_insettime);
-									LCD_DisplayString_color(30,280,24,"Adjust TIM OK          ",BLUE,WHITE);
+									//LCD_DisplayString_color(34,99,24,"Adjust TIM OK          ",BLUE,WHITE);
+									
+								 LCD_DisplayChinese_string_color(30 ,99,24,Chinese_Set_Time_Ok,BLUE,Chinese_Micolor);
 									//for(j=0;j<100;j++) delay_ms(10);  // Adjust OK 调整OK显示1秒
 									//LCD_DisplayString(30,280,24,"                        ");
 									
@@ -1164,9 +1269,17 @@ close:
 							 }
 							 else
 							 {
-									LCD_DisplayString_color(0,280,24,"Please choose on/off",BLUE,WHITE);
-									for(j=0;j<200;j++) delay_ms(10);
-									image_display(0,0,(u8*)gImage_set_time);
+								 set_tim_success=0;//上边如果没有执行到，就清除不了，设置成功 标志位，导致下一次，选择开关直接默认成功了
+								 
+									//LCD_DisplayString_color(34,99,24,"Please choose on/off",BLUE,WHITE);
+									LCD_DisplayChinese_string_color(30,99,24,Chinese_Reset_Switch,BLUE,Chinese_Micolor);
+									LCD_DisplayString_color(174,99,24,(u8 *)&line,BLUE,Chinese_Micolor);
+									LCD_DisplayChinese_string_color(186 ,99,24,Chinese_Reset_Close,BLUE,Chinese_Micolor);
+									
+								 for(j=0;j<200;j++) delay_ms(10);
+									//image_display(0,0,(u8*)gImage_set_time);
+								 //显示后把位置清空一下，不要影响到后边的显示===设置   年
+									LCD_DisplayChinese_string_color(30,99,24,Chinese_Clear_Set,BLUE,WHITE);
 							 }
 						 }
 
@@ -1239,6 +1352,9 @@ int main()
   KEY_init();
 	EXTI_init( );
 	
+	//全局红色
+	BRUSH_COLOR = RED;
+	BACK_COLOR = 0xEF9C;
 	
 	UART1_init(115200);
 	printf("reset ----\n");
@@ -1323,52 +1439,54 @@ int main()
 				//不会让时间闪烁一下
 				RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct_in_main);
 				sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct_in_main.RTC_Hours,RTC_TimeStruct_in_main.RTC_Minutes,RTC_TimeStruct_in_main.RTC_Seconds);
-				LCD_DisplayString(142,295,24,temp_buff); //显示一个12/16/24字体字符串
+				LCD_DisplayString_color(143,0,24,temp_buff,WHITE,Font_time_blue); //显示一个12/16/24字体字符串
 			
 			
 				AT24CXX_Read(1,&light_status,1);
 				if(light_status==1)//弱
 				{
-					LCD_DisplayChinese_one(167,148,21,24);
+					LCD_DisplayChinese_one(179,219,21,24);
 				}else if(light_status==2)//中
 				{
-					LCD_DisplayChinese_one(167,148,22,24);
+					LCD_DisplayChinese_one(179,219,22,24);
 				}else if(light_status==3)//强
 				{
-					LCD_DisplayChinese_one(167,148,23,24);
+					LCD_DisplayChinese_one(179,219,23,24);
 				}
 			
 				//窗帘状态----到时候会先去读取该值的
 				if(curtain_status==0)
 				{
-					LCD_DisplayChinese_one(135,185,25,24);
+					LCD_DisplayChinese_one(184,138,25,24);
 				}
 				else if(curtain_status==1)
 				{
-					LCD_DisplayChinese_one(135,185,24,24);
+					LCD_DisplayChinese_one(184,138,24,24);
 				}
 				
 				//显示模式
+				/*
 				chinese_mode[0]=11;
 				chinese_mode[1]=12;
 				LCD_DisplayChinese_string(135,223,24,chinese_mode);
+				*/
 			
 				//夜晚蜂鸣器
 				AT24CXX_Read(2,&beep_status,1);
 				if(beep_status==0)
 				{
-					LCD_DisplayChinese_one(205,264,25,24);
+					LCD_DisplayChinese_one(81,219,25,24);
 				}
 				else if(beep_status==1)
 				{
-					LCD_DisplayChinese_one(205,264,24,24);
+					LCD_DisplayChinese_one(81,219,24,24);
 				}
 //---------------------------------------------------------------------			
 				while(1)
 				{
 					XPT2046_Scan(0);
 					//------------加光照阈值-------------
-					if(Xdown>128&&Xdown<164&&Ydown>143&&Ydown<179)
+					if(Xdown>127&&Xdown<167&&Ydown>243&&Ydown<283)
 					{
 						delay_ms(200);
 						
@@ -1376,21 +1494,21 @@ int main()
 						if(light_status>3)
 						{
 							light_status=1;
-							LCD_DisplayChinese_one(167,148,21,24);
+							LCD_DisplayChinese_one(179,219,21,24);
 						}
 						else
 						{
 							if(light_status==1)
 							{
-								LCD_DisplayChinese_one(167,148,21,24);
+								LCD_DisplayChinese_one(179,219,21,24);
 							}
 							else if(light_status==2)
 							{
-								LCD_DisplayChinese_one(167,148,22,24);
+								LCD_DisplayChinese_one(179,219,22,24);
 							}
 							else if(light_status==3)
 							{
-								LCD_DisplayChinese_one(167,148,23,24);
+								LCD_DisplayChinese_one(179,219,23,24);
 							}
 						}
 						
@@ -1398,7 +1516,7 @@ int main()
 						
 					}
 					//-------------减光照阈值-------------------
-					if(Xdown>195&&Xdown<231&&Ydown>143&&Ydown<179)
+					if(Xdown>170&&Xdown<210&&Ydown>243&&Ydown<283)
 					{
 						delay_ms(200);
 						
@@ -1406,21 +1524,21 @@ int main()
 						if(light_status<1)
 						{
 							light_status=3;
-							LCD_DisplayChinese_one(167,148,23,24);
+							LCD_DisplayChinese_one(179,219,23,24);
 						}
 						else
 						{
 							if(light_status==1)
 							{
-								LCD_DisplayChinese_one(167,148,21,24);
+								LCD_DisplayChinese_one(179,219,21,24);
 							}
 							else if(light_status==2)
 							{
-								LCD_DisplayChinese_one(167,148,22,24);
+								LCD_DisplayChinese_one(179,219,22,24);
 							}
 							else if(light_status==3)
 							{
-								LCD_DisplayChinese_one(167,148,23,24);
+								LCD_DisplayChinese_one(179,219,23,24);
 							}
 						}
 						AT24CXX_Write(1,&light_status,1);
@@ -1432,7 +1550,7 @@ int main()
 					}
 					
 					//切换模式
-					if(Xdown>5&&Xdown<45&&Ydown>206&&Ydown<246)
+					if(Xdown>0&&Xdown<35&&Ydown>135&&Ydown<190)
 					{
 						
 						delay_ms(200);
@@ -1446,19 +1564,19 @@ smart_mode:
 						break;
 					}
 					//夜晚蜂鸣器
-					if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+					if(Xdown>30&&Xdown<80&&Ydown>210&&Ydown<260)
 					{
 						delay_ms(200);
 						
 						if(beep_status==0)
 						{
-							LCD_DisplayChinese_one(205,264,24,24);
+							LCD_DisplayChinese_one(81,219,24,24);
 							beep_status=1;
 							AT24CXX_Write(2,&beep_status,1);
 						}
 						else if(beep_status==1)
 						{
-							LCD_DisplayChinese_one(205,264,25,24);
+							LCD_DisplayChinese_one(81,219,25,24);
 							beep_status=0;
 							AT24CXX_Write(2,&beep_status,1);
 						}
@@ -1479,7 +1597,7 @@ smart_mode:
 						{
 							close_rotate();
 							curtain_status=0;
-							LCD_DisplayChinese_one(135,185,25,24);
+							LCD_DisplayChinese_one(184,138,25,24);//窗帘状态
 							printf("curtain close because light strength too high\n");
 						}
 					}
@@ -1489,7 +1607,7 @@ smart_mode:
 						{
 							open_rotate();
 							curtain_status=1;
-							LCD_DisplayChinese_one(135,185,24,24);
+							LCD_DisplayChinese_one(184,138,24,24);//窗帘状态
 							printf("curtain open beacause light weak\n");
 						}
 					}
@@ -1510,34 +1628,35 @@ smart_mode:
 				//不会让时间闪烁一下
 				RTC_GetTime(RTC_Format_BIN,&RTC_TimeStruct_in_main);
 				sprintf((char*)temp_buff,"%02d:%02d:%02d",RTC_TimeStruct_in_main.RTC_Hours,RTC_TimeStruct_in_main.RTC_Minutes,RTC_TimeStruct_in_main.RTC_Seconds);
-				LCD_DisplayString(142,295,24,temp_buff); //显示一个12/16/24字体字符串
+				LCD_DisplayString_color(143,0,24,temp_buff,WHITE,Font_time_blue); //显示一个12/16/24字体字符串
 //-----------------------------------------------------------			
 				//窗帘状态----到时候会先去读取该值的
 				if(curtain_status==0)
 				{
-					LCD_DisplayChinese_one(140,143,25,24);
+					LCD_DisplayChinese_one(184,128,25,24);//窗帘状态
 				}
 				else if(curtain_status==1)
 				{
-					LCD_DisplayChinese_one(140,143,24,24);
+					LCD_DisplayChinese_one(184,128,24,24);//窗帘状态
 				}
 			
 				
 				//显示模式
+				/*
 				chinese_mode[0]=13;
 				chinese_mode[1]=14;
 				LCD_DisplayChinese_string(140,173,24,chinese_mode);
-				
+				*/
 				
 				//夜晚蜂鸣器
 				AT24CXX_Read(2,&beep_status,1);
 				if(beep_status==0)
 				{
-					LCD_DisplayChinese_one(205,264,25,24);
+					LCD_DisplayChinese_one(81,199,25,24);
 				}
 				else if(beep_status==1)
 				{
-					LCD_DisplayChinese_one(205,264,24,24);
+					LCD_DisplayChinese_one(81,199,24,24);
 				}
 //---------------------------------------------------------------------			
 			
@@ -1549,7 +1668,7 @@ smart_mode:
 						goto hand_mode;
 					}
 					//切换模式
-					if(Xdown>0&&Xdown<40&&Ydown>168&&Ydown<208)
+					if(Xdown>209&&Xdown<240&&Ydown>138&&Ydown<188)
 					{
 
 						delay_ms(300);
@@ -1564,10 +1683,10 @@ hand_mode:
 					}
 					
 					//窗帘ON
-					if(Xdown>100&&Xdown<143&&Ydown>203&&Ydown<245)
+					if(Xdown>120&&Xdown<170&&Ydown>192&&Ydown<242)
 					{
 						delay_ms(200);
-						LCD_DisplayChinese_one(140,143,24,24);
+						LCD_DisplayChinese_one(184,128,24,24);
 						
 						if(curtain_status==0)
 						{
@@ -1585,10 +1704,10 @@ hand_mode:
 					}
 					
 					//窗帘OFF
-						if(Xdown>147&&Xdown<190&&Ydown>203&&Ydown<245)
+						if(Xdown>170&&Xdown<210&&Ydown>192&&Ydown<242)
 					{
 						delay_ms(200);
-						LCD_DisplayChinese_one(140,143,25,24);
+						LCD_DisplayChinese_one(184,128,25,24);
 						
 						if(curtain_status==1)
 						{
@@ -1605,7 +1724,7 @@ hand_mode:
 					}
 					
 					//设置定时开关
-					if(Xdown>190&&Xdown<230&&Ydown>226&&Ydown<266)
+					if(Xdown>170&&Xdown<220&&Ydown>280&&Ydown<320)
 					{
 						delay_ms(200);
 						enter_set_time=1;
@@ -1615,19 +1734,19 @@ hand_mode:
 					}
 					
 					//夜晚蜂鸣器
-					if(Xdown>0&&Xdown<45&&Ydown>255&&Ydown<300)
+					if(Xdown>30&&Xdown<80&&Ydown>190&&Ydown<240)
 					{
 						delay_ms(300);
 						
 						if(beep_status==0)
 						{
-							LCD_DisplayChinese_one(205,264,24,24);
+							LCD_DisplayChinese_one(81,199,24,24);
 							beep_status=1;
 							AT24CXX_Write(2,&beep_status,1);
 						}
 						else if(beep_status==1)
 						{
-							LCD_DisplayChinese_one(205,264,25,24);
+							LCD_DisplayChinese_one(81,199,25,24);
 							beep_status=0;
 							AT24CXX_Write(2,&beep_status,1);
 						}
