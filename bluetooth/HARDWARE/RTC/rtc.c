@@ -7,6 +7,8 @@
 #include "myiic.h"
 
 
+
+
 RTC_TimeTypeDef RTC_TimeStruct;
 RTC_DateTypeDef RTC_DateStruct;
 u8 My_RTC_init(void)
@@ -278,6 +280,8 @@ void RTC_WKUP_IRQHandler(void)
 	}
 	EXTI_ClearITPendingBit(EXTI_Line22);//
 }
+
+
 //add----copy
 u8 const month_amendBuf[12]={0,3,3,6,1,4,6,2,5,0,3,5};
 /****************************************************************************

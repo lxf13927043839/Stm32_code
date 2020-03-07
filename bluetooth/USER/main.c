@@ -25,6 +25,8 @@
 //==========================================================
 u8 light_streng_now=0;
 u8 light_streng_set=0;
+
+u8 open_or_close_curtain_from_server=3;//1：打开 0 关闭
 //========================================================
 
 //还没有添加定时上传服务器功能
@@ -58,11 +60,6 @@ void LCD_DisplayString(u16 x,u16 y,u8 size,u8 *p); //显示一个12/16/24字体字符串
 
 void get_all_status_data(char *data_buff);
 //---------------------ESP8266--115200--------------------------------------
-//void front_rotate(void); //电机转动要把电池的电量考虑进去
-//void area_rotate(void);
-//void stop_rotate(void);
-
-//void get_all_status_data(char *data_buff);
 /*
 		功能：与tlink对接的数据协议
 		
@@ -177,12 +174,12 @@ void UART4_IRQHandler(void)
 								
 										if(curtain_status==0)
 										{
-											curtain_status=1;
-											LCD_DisplayChinese_one(184,128,24,24);
+											//curtain_status=1;
+											//LCD_DisplayChinese_one(184,128,24,24);
 //===========================================================================================											
 											//add 电机控制
-											open_rotate();
-											curtain_status=1;
+											//open_rotate();
+											open_or_close_curtain_from_server = 1;
 											printf(" open curtain from server\n");
 										}
 										
@@ -198,10 +195,11 @@ void UART4_IRQHandler(void)
 									{	
 										if(curtain_status==1)
 										{
-											curtain_status=0;
-											LCD_DisplayChinese_one(184,128,25,24);
+											//curtain_status=0;
+											//LCD_DisplayChinese_one(184,128,25,24);
 //===========================================================================================
-											close_rotate();
+											//close_rotate();
+											open_or_close_curtain_from_server = 0;
 											printf("close curtain from server\n");
 										}
 								
@@ -452,41 +450,51 @@ void EXTI9_5_IRQHandler(void)
 	
 }
 
-////-----------电机控制初始化---------
+////-----------电机控制初始化---------------------------------
 
-#define ENA PBout(10)	
-#define IN1 PBout(11)	// D1	 
-#define IN2 PCout(6)	// D1	 
+////-----------电机控制初始化---------
+//PF1(开) PF2(关) 作为窗帘关闭的检查条件 
+
+#define BorderClose GPIO_ReadInputDataBit(GPIOF,GPIO_Pin_2)
+#define BorderOpen GPIO_ReadInputDataBit(GPIOF,GPIO_Pin_1)
+void CheckCurtainBorder_init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOF,ENABLE);
+	GPIO_InitStruct.GPIO_Mode=GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_OType=GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_Pin=GPIO_Pin_1|GPIO_Pin_2;
+	GPIO_InitStruct.GPIO_PuPd=GPIO_PuPd_UP;
+	GPIO_InitStruct.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_Init(GPIOF, &GPIO_InitStruct);
+}
+
+#define ENA PBout(5)	
+#define IN1 PBout(4)	
+#define IN2 PBout(3) 
 void ELECTRI_motor_init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	
 	//开启GPIO时钟
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
 	//初始化IO
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11; //GPIOB11  GPIOB10
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_4 | GPIO_Pin_3; //GPIOB5 4 3 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//输出
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; //速度50MHz
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
 	GPIO_Init(GPIOB,&GPIO_InitStructure); //PB10, PB11
-	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //GPIOC6
-	GPIO_Init(GPIOC,&GPIO_InitStructure); //PC6
-	
-	GPIO_ResetBits(GPIOC,GPIO_Pin_6);
-	GPIO_ResetBits(GPIOB,GPIO_Pin_10 | GPIO_Pin_11);
+
+	GPIO_ResetBits(GPIOB,GPIO_Pin_5 | GPIO_Pin_4 | GPIO_Pin_3);
 }
 
+u8 curtain_motor_open_close=3;
 void open_rotate(void)//电机转动打开窗帘
 {
 	ENA=1;
 	IN1=1;
 	IN2=0;
-	//判断条件
-	
+	curtain_motor_open_close=1;
 	
 	printf("electrical motor open successfully\n");
 }
@@ -495,8 +503,8 @@ void close_rotate(void)
 	ENA=1;
 	IN1=0;
 	IN2=1;
-	//判断条件
-	
+	curtain_motor_open_close=0;
+
 	printf("electrical motor close successfully\n");
 }
 void stop_rotate(void)
@@ -987,7 +995,7 @@ void SET_time(void)
 	u8 curtain_status_choose_insettime=3;//选择窗帘状态,只有0/1 状态是有效的，其他数字是无效的
 	short set_tim_success=-1; //时间的设置是正常的 
 	u8 had_settimeflag=3; //检测是否有设置了
-	u8 temp;
+
 	u8 set_curtain_status;//定时设置窗帘的开关，不是直接反应窗帘状态,用来清理=3
 	u8 enter_key3_func=4;
 	int curtain_content[2]={0,-1};
@@ -1074,6 +1082,7 @@ void SET_time(void)
 		//返回
 		if(Xdown>0&&Xdown<30&&Ydown>0&&Ydown<50)
 		{
+end:
 			delay_ms(200);
 			enter_set_time=0;
 			//printf("break successful\n");
@@ -1135,7 +1144,7 @@ close:
 								if(enter_key3_func==1 || enter_key3_func==0)//表明有设置了，不进入key3调时
 								{
 									LCD_DisplayChinese_string_color(30,99,24,Chinese_Click_Close,BLUE,Chinese_Micolor);
-									LCD_DisplayString_color(126,99,24,"CLOSE",BLUE,Chinese_Micolor);
+									LCD_DisplayString_color(126,99,24,"CLOSE",RED,Chinese_Micolor);
 								}
 								else//没有设置时间
 								{
@@ -1233,7 +1242,7 @@ close:
 									//LCD_DisplayString_color(34,99,24,"Adjust TIM OK          ",BLUE,WHITE);
 									
 								 LCD_DisplayChinese_string_color(30 ,99,24,Chinese_Set_Time_Ok,BLUE,Chinese_Micolor);
-									//for(j=0;j<100;j++) delay_ms(10);  // Adjust OK 调整OK显示1秒
+								 for(j=0;j<200;j++) delay_ms(10);  // Adjust OK 调整OK显示2秒
 									//LCD_DisplayString(30,280,24,"                        ");
 									
 								 /*
@@ -1264,6 +1273,7 @@ close:
 									
 								  option=0;    //选项从头来
 									process=0;   //短按KEY3时间设置完成 返回到时间显示
+									goto end;
 									break;
 								 
 							 }
@@ -1326,9 +1336,6 @@ u8 light_control_valid;
 
 int main()
 {
-	int only_test=0;
-	int people=0;
-	int i=0,cycle=0,T=2048;
 	int adcx;
 	/*
 		定义标志变量
@@ -1338,7 +1345,6 @@ int main()
 	u8 status;
 
 	u8 system_mode=0;//1:智能 0：手动
-	int chinese_mode[3]={11,12,-1};//模式的名字:智能
 	u8 light_status=0;//1:弱 2：中 3：强
 	
 	RTC_TimeTypeDef RTC_TimeStruct_in_main;
@@ -1400,6 +1406,8 @@ int main()
 	
 	printf("start \n");
 	
+	//电机部分初始化
+	CheckCurtainBorder_init();
 	ELECTRI_motor_init();
 	//先对24C02存储的值进行判断，先初始化一下，可以进行优化一下
 
@@ -1611,8 +1619,35 @@ smart_mode:
 							printf("curtain open beacause light weak\n");
 						}
 					}
-					
-					
+//========================检测电机转动是否到达了边界=========================
+					if(curtain_motor_open_close == 1) //开窗帘
+					{
+						if(BorderOpen == 1)
+						{
+							delay_ms(10);
+							if(BorderOpen == 1)
+							{
+								stop_rotate();
+								//printf("light = %d\n",BorderOpen);
+								curtain_motor_open_close=3;
+							}
+							
+						}
+					}
+					else if(curtain_motor_open_close == 0)
+					{
+						if(BorderClose == 1)
+						{
+							delay_ms(10);
+							if(BorderClose == 1)
+							{
+								stop_rotate();
+								//printf("light = %d\n",BorderOpen);
+								curtain_motor_open_close=3;
+							}
+							
+						}
+					}					
 //===================================================================================					
 					
 					
@@ -1667,6 +1702,15 @@ smart_mode:
 					{
 						goto hand_mode;
 					}
+					
+					if(open_or_close_curtain_from_server==1)
+					{
+						goto open_curtain_from_server;
+					}else if(open_or_close_curtain_from_server == 0)
+					{
+						goto close_curtain_from_server;
+					}
+					
 					//切换模式
 					if(Xdown>209&&Xdown<240&&Ydown>138&&Ydown<188)
 					{
@@ -1686,6 +1730,7 @@ hand_mode:
 					if(Xdown>120&&Xdown<170&&Ydown>192&&Ydown<242)
 					{
 						delay_ms(200);
+open_curtain_from_server:
 						LCD_DisplayChinese_one(184,128,24,24);
 						
 						if(curtain_status==0)
@@ -1696,7 +1741,7 @@ hand_mode:
 							SENDstr_to_server(data_buff);
 //=======================================================
 							open_rotate();
-							
+							open_or_close_curtain_from_server = 3;//使得服务器的控制指令只执行一遍
 							printf("curtain open from hand mode\n");
 						}
 						
@@ -1707,6 +1752,7 @@ hand_mode:
 						if(Xdown>170&&Xdown<210&&Ydown>192&&Ydown<242)
 					{
 						delay_ms(200);
+close_curtain_from_server:
 						LCD_DisplayChinese_one(184,128,25,24);
 						
 						if(curtain_status==1)
@@ -1717,6 +1763,7 @@ hand_mode:
 							SENDstr_to_server(data_buff);
 //====================================================================	
 							close_rotate();
+							open_or_close_curtain_from_server = 3;//使得服务器的控制指令只执行一遍
 							printf("curtain off by hand mode\n");
 						}
 						//printf("off \n");
@@ -1759,11 +1806,42 @@ hand_mode:
 					else
 					{
 						data_buff[25]=0+48;
-					}	
+					}
+
+//========================检测电机转动是否到达了边界=========================
+					if(curtain_motor_open_close == 1) //开窗帘
+					{
+						if(BorderOpen == 1)
+						{
+							delay_ms(10);
+							if(BorderOpen == 1)
+							{
+								stop_rotate();
+								//printf("light = %d\n",BorderOpen);
+								curtain_motor_open_close=3;
+							}
+							
+						}
+					}
+					else if(curtain_motor_open_close == 0)
+					{
+						if(BorderClose == 1)
+						{
+							delay_ms(10);
+							if(BorderClose == 1)
+							{
+								stop_rotate();
+								//printf("light = %d\n",BorderOpen);
+								curtain_motor_open_close=3;
+							}
+							
+						}
+					}					
 				}
 				break;
 		}
 	}
 
 }
+
 
