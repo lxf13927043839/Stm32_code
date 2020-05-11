@@ -27,3 +27,5 @@ JLinkLog.txt
 *.hex
 *.uvprojx
 *.uvguix.ASUS
+*.uvoptx
+*.hex
