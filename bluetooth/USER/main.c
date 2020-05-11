@@ -540,7 +540,7 @@ void get_all_status_data(char *data_buff)
 	light_streng=(4096-adcx)*100/4096;          //获取计算后的带小数的实际电压值，比如3.1111 变化值太小，不好测量。换成百分比
 	//printf("光敏:light_streng = %d\n",light_streng);
 	
-	//DHT11_Read_Data(&temperature,&humidity);
+	DHT11_Read_Data(&temperature,&humidity);
 	//printf("温度temperature = %d \n",temperature);
 	//printf("湿度humidity    = %d \n",humidity);
 	
@@ -1375,10 +1375,10 @@ int main()
 	}
 	
   //如果没有dht11 灯会闪烁，需解释出来
-//	while(DHT11_init())
-//	{
-//		LED1=!LED1;
-//	}
+	while(DHT11_init())
+	{
+		LED1=!LED1;
+	}
 	
 	People_init();
 	

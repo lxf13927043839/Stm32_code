@@ -1110,8 +1110,8 @@
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\HARDWARE\IMAGE2LCD\set_time.c</PathWithFileName>
-      <FilenameWithoutPath>set_time.c</FilenameWithoutPath>
+      <PathWithFileName>..\HARDWARE\IMAGE2LCD\hand_mode.c</PathWithFileName>
+      <FilenameWithoutPath>hand_mode.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -1123,8 +1123,8 @@
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\HARDWARE\IMAGE2LCD\smart_mode.c</PathWithFileName>
-      <FilenameWithoutPath>smart_mode.c</FilenameWithoutPath>
+      <PathWithFileName>..\HARDWARE\IMAGE2LCD\set_time.c</PathWithFileName>
+      <FilenameWithoutPath>set_time.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -1136,8 +1136,8 @@
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\HARDWARE\IMAGE2LCD\hand_mode.c</PathWithFileName>
-      <FilenameWithoutPath>hand_mode.c</FilenameWithoutPath>
+      <PathWithFileName>..\HARDWARE\IMAGE2LCD\smart_mode.c</PathWithFileName>
+      <FilenameWithoutPath>smart_mode.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

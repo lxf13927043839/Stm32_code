@@ -744,6 +744,11 @@
           <GroupName>PIC</GroupName>
           <Files>
             <File>
+              <FileName>hand_mode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IMAGE2LCD\hand_mode.c</FilePath>
+            </File>
+            <File>
               <FileName>set_time.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\IMAGE2LCD\set_time.c</FilePath>
@@ -752,11 +757,6 @@
               <FileName>smart_mode.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\IMAGE2LCD\smart_mode.c</FilePath>
-            </File>
-            <File>
-              <FileName>hand_mode.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IMAGE2LCD\hand_mode.c</FilePath>
             </File>
           </Files>
         </Group>
