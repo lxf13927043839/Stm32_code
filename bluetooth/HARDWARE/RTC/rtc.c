@@ -19,7 +19,7 @@ u8 My_RTC_init(void)
 	u16 retry=0X1FFF;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);// πƒ‹PWR ±÷”
 	PWR_BackupAccessCmd(ENABLE); // πƒ‹∫Û±∏ºƒ¥Ê∆˜∑√Œ 
-	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5020)// «∑Òµ⁄“ª¥Œ≈‰÷√°£ø
+	if(RTC_ReadBackupRegister(RTC_BKP_DR0)!=0x5030)// «∑Òµ⁄“ª¥Œ≈‰÷√°£ø
 	{
 		RCC_LSEConfig(RCC_LSE_ON);//LSE ø™∆Ù
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) 
@@ -39,14 +39,14 @@ u8 My_RTC_init(void)
 		
 		//3.…Ë÷√ ±º‰
 		//RTC_TimeStruct.RTC_H12 =  
-		RTC_TimeStruct.RTC_Hours = 4;
+		RTC_TimeStruct.RTC_Hours = 1;
 		RTC_TimeStruct.RTC_Minutes = 58;
 		RTC_TimeStruct.RTC_Seconds = 50;
 		RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
 		
 		//…Ë÷√»’∆⁄
-		RTC_DateStruct.RTC_Date = 0x24;
-		RTC_DateStruct.RTC_Month = 0x02;
+		RTC_DateStruct.RTC_Date = 0x13;
+		RTC_DateStruct.RTC_Month = 0x05;
 		RTC_DateStruct.RTC_WeekDay = RTC_Weekday_Saturday;
 		RTC_DateStruct.RTC_Year = 0x20;
 		
@@ -276,7 +276,7 @@ void RTC_WKUP_IRQHandler(void)
 	{
 		RTC_ClearFlag(RTC_FLAG_WUTF); //
 		LCD_showtime_RTC();		
-		LED0=!LED0;
+		//LED0=!LED0;
 	}
 	EXTI_ClearITPendingBit(EXTI_Line22);//
 }

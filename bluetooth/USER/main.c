@@ -99,7 +99,6 @@ void UART4_IRQHandler(void)
 		{
 			if(data=='>')
 			{
-				LED2=0;
 				link_success=1;
 				feed_dog();
 				TIM4_init(4*10000-1,8400-1); //定时器跟看门狗时间同步
@@ -108,7 +107,7 @@ void UART4_IRQHandler(void)
 				TIM3->CNT=0;
 				
 				link_flag=1;//连接成功
-				
+				LED0 = 0;
 				
 			}
 		}else if(link_success==1)  //对tlink下行控制指令、以及心跳包的处理
@@ -118,7 +117,7 @@ void UART4_IRQHandler(void)
 				case 0://0,1是对控制指令的处理
 							if(data=='{')
 							{
-								LED0=!LED0;
+								//LED0=!LED0;
 								rece_status++;
 							}
 							else
@@ -146,6 +145,7 @@ void UART4_IRQHandler(void)
 										{
 											//printf("重新设置计时\n");							
 											TIM2->CNT=0;
+											LED1 = !LED1;
 										}
 										
 									}
@@ -234,7 +234,7 @@ void UART4_IRQHandler(void)
 								{
 									temp=4;
 									AT24CXX_Write(4,(u8*)&temp,1);
-									
+									LED2 = 1;
 									if(enter_set_time==1)
 									{
 										label_closetime=1;
@@ -1130,6 +1130,7 @@ close:
 			set_time_successful=0;//可以重新选择窗帘状态
 			
 			set_tim_success=0;//取消了设置，需要对设置定时成功的标志清一下
+			LED2 = 1;
 		}
 		
 		
@@ -1273,6 +1274,7 @@ close:
 									
 								  option=0;    //选项从头来
 									process=0;   //短按KEY3时间设置完成 返回到时间显示
+									LED2 = 0;
 									goto end;
 									break;
 								 
@@ -1315,7 +1317,7 @@ void beepalarm_in_night(void)
 		
 		if(beep_status==1)
 		{
-			//BEEP=1;
+			BEEP=1;
 		  printf("beep is ringing\n");
 		}
 		
@@ -1323,8 +1325,8 @@ void beepalarm_in_night(void)
 	}
 	else
 	{
-		//BEEP=0;
-		//printf("no people \n");
+		BEEP=0;
+		printf("no people \n");
 		data_buff[25]=0+48;
 	}
 }
@@ -1343,7 +1345,7 @@ int main()
 		在变量后边，对所赋值进行说明
 	*/
 	u8 status;
-
+	u8 keyStatus = -1;
 	u8 system_mode=0;//1:智能 0：手动
 	u8 light_status=0;//1:弱 2：中 3：强
 	
@@ -1355,8 +1357,9 @@ int main()
 	
 	BEEP_init();
 	LED_init();
+	LED2 = 1;
   KEY_init();
-	EXTI_init( );
+	EXTI_init();
 	
 	//全局红色
 	BRUSH_COLOR = RED;
@@ -1375,10 +1378,12 @@ int main()
 	}
 	
   //如果没有dht11 灯会闪烁，需解释出来
+
 	while(DHT11_init())
 	{
 		LED1=!LED1;
 	}
+	
 	
 	People_init();
 	
@@ -1432,7 +1437,14 @@ int main()
 		status=0;
 		AT24CXX_Write(3,&status,1);
 	}
-	
+	if(BorderClose == 0 && BorderOpen == 0)
+	{
+		curtain_status = 1;
+	}
+	else 
+	{
+		curtain_status = 0;
+	}
 
 	while(1)
 	{
@@ -1647,7 +1659,8 @@ smart_mode:
 							}
 							
 						}
-					}					
+					}
+
 //===================================================================================					
 					
 					
@@ -1836,6 +1849,13 @@ close_curtain_from_server:
 							}
 							
 						}
+					}
+					
+					keyStatus = key_scanf(0);
+					if(keyStatus == 4)
+					{
+						stop_rotate();
+						printf("key stop = %d\n",keyStatus);
 					}					
 				}
 				break;
