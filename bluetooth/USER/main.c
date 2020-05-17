@@ -1318,7 +1318,7 @@ void beepalarm_in_night(void)
 		if(beep_status==1)
 		{
 			BEEP=1;
-		  printf("beep is ringing\n");
+		  //printf("beep is ringing\n");
 		}
 		
 		data_buff[25]=5+48;
@@ -1326,7 +1326,7 @@ void beepalarm_in_night(void)
 	else
 	{
 		BEEP=0;
-		printf("no people \n");
+		//printf("no people \n");
 		data_buff[25]=0+48;
 	}
 }
